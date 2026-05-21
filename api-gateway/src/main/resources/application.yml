@@ -1,0 +1,128 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        enabled: true
+        server-addr: localhost:8848
+        namespace:
+        group: DEFAULT_GROUP
+      config:
+        enabled: true
+        server-addr: localhost:8848
+        namespace:
+        group: DEFAULT_GROUP
+        file-extension: yaml
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user-org-service
+          uri: lb://user-org-service
+          predicates:
+            - Path=/api/v1/users/**,/api/v1/auth/**,/api/v1/orgs/**,/api/v1/demo/**
+          filters:
+            - StripPrefix=0
+            - name: RequestRateLimiter
+              args:
+                key-resolver: '#{@remoteAddrKeyResolver}'
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 200
+            - name: SentinelGatewayFilter
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - StripPrefix=0
+            - name: SentinelGatewayFilter
+        - id: file-service
+          uri: lb://file-service
+          predicates:
+            - Path=/api/v1/files/**
+          filters:
+            - StripPrefix=0
+            - name: SentinelGatewayFilter
+        - id: workflow-service
+          uri: lb://workflow-service
+          predicates:
+            - Path=/api/v1/workflow/**
+          filters:
+            - StripPrefix=0
+            - name: SentinelGatewayFilter
+        - id: third-party-service
+          uri: lb://third-party-service
+          predicates:
+            - Path=/api/v1/thirdparty/**
+          filters:
+            - StripPrefix=0
+            - name: SentinelGatewayFilter
+        - id: system-service
+          uri: lb://system-service
+          predicates:
+            - Path=/api/v1/param-categories/**,/api/v1/system-params/**
+          filters:
+            - StripPrefix=0
+            - name: SentinelGatewayFilter
+        - id: system-monitor
+          uri: lb://system-monitor
+          predicates:
+            - Path=/api/v1/monitor/**
+          filters:
+            - StripPrefix=0
+            - name: SentinelGatewayFilter
+      default-filters:
+        - AddRequestHeader=X-Request-Id, #{T(java.util.UUID).randomUUID().toString()}
+        - AddResponseHeader=X-Gateway, api-gateway
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+sentinel:
+  transport:
+    dashboard: localhost:8718
+    port: 8719
+  datasource:
+    ds1:
+      nacos:
+        server-addr: localhost:8848
+        data-id: api-gateway-sentinel
+        group-id: SENTINEL_GROUP
+        data-type: json
+        rule-type: flow
+  gateway:
+    enabled: true
+    stat:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    root: INFO
+    com.zhuji.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId}] - %msg%n'

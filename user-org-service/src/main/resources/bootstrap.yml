@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: user-org-service
+  cloud:
+    nacos:
+      config:
+        server-addr: localhost:8848
+        namespace:
+        group: DEFAULT_GROUP
+        file-extension: yaml
+        shared-configs:
+          - data-id: common.yaml
+            group: DEFAULT_GROUP
+            refresh: true
+      discovery:
+        server-addr: localhost:8848
+        namespace:
+        group: DEFAULT_GROUP

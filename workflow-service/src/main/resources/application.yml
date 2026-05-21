@@ -1,0 +1,73 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: workflow-service
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/zhuji_workflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    druid:
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+flowable:
+  flowable5-compatible-enabled: true
+  database-schema-update: true
+  async-executor-activate: false
+  async-history-executor-activate: false
+  form-definition-cache-size: 100
+  process-definition-cache-size: 100
+  enable-safe-xml: true
+  cache-configs:
+    process-definition: 100
+    form-definition: 100
+    decision-definition: 100
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+knife4j:
+  enable: true
+  openapi:
+    title: 工作流服务API文档
+    description: Flowable流程引擎集成接口文档
+    version: v1.0
+    group:
+      default:
+        group-name: 工作流模块
+        api-rule: package
+        api-rule-resources:
+          - com.zhuji.workflow.controller
+
+zhuji:
+  security:
+    jwt-secret: zhuji-jwt-secret-key-workflow-123456789
+    permit-urls: /api/v1/workflow/process/**
+
+logging:
+  level:
+    org.flowable: DEBUG
+    com.zhuji.workflow: DEBUG

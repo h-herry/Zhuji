@@ -1,0 +1,257 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: zhuji-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: zhuji_user_org
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sql/init_user_org.sql:/docker-entrypoint-initdb.d/01_init_user_org.sql
+      - ./sql/init_notification.sql:/docker-entrypoint-initdb.d/02_init_notification.sql
+      - ./sql/init_file.sql:/docker-entrypoint-initdb.d/03_init_file.sql
+    networks:
+      - zhuji-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis-node1:
+    image: redis:7-alpine
+    container_name: zhuji-redis-node1
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data1:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+    networks:
+      - zhuji-network
+
+  redis-node2:
+    image: redis:7-alpine
+    container_name: zhuji-redis-node2
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data2:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+    networks:
+      - zhuji-network
+
+  redis-node3:
+    image: redis:7-alpine
+    container_name: zhuji-redis-node3
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis-data3:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+    networks:
+      - zhuji-network
+
+  nacos:
+    image: nacos/nacos-server:v2.3.0
+    container_name: zhuji-nacos
+    environment:
+      - MODE=standalone
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=root
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - zhuji-network
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: zhuji-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - zhuji-network
+
+  zookeeper:
+    image: zookeeper:3.8
+    container_name: zhuji-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOO_MY_ID: 1
+    volumes:
+      - zookeeper-data:/data
+    networks:
+      - zhuji-network
+
+  kafka:
+    image: wurstmeister/kafka:2.13-2.8.1
+    container_name: zhuji-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka-data:/kafka
+    networks:
+      - zhuji-network
+
+  sentinel:
+    image: bladex/sentinel-dashboard:1.8.6
+    container_name: zhuji-sentinel
+    ports:
+      - "8718:8718"
+    environment:
+      SENTINEL_DASHBOARD_PORT: 8718
+    networks:
+      - zhuji-network
+
+  seata:
+    image: seataio/seata-server:2.0.0
+    container_name: zhuji-seata
+    ports:
+      - "8091:8091"
+      - "7091:7091"
+    environment:
+      - SEATA_CONFIG_NAME=file:/root/seata-config/registry
+      - SEATA_GROUP=SEATA_GROUP
+    volumes:
+      - ./seata:/root/seata-config
+    depends_on:
+      - nacos
+    networks:
+      - zhuji-network
+
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: zhuji-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - zhuji-network
+
+  logstash:
+    image: logstash:8.11.0
+    container_name: zhuji-logstash
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - zhuji-network
+
+  kibana:
+    image: kibana:8.11.0
+    container_name: zhuji-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - zhuji-network
+
+  skywalking-oap:
+    image: apache/skywalking-oap-server:9.5.0
+    container_name: zhuji-skywalking-oap
+    ports:
+      - "11800:11800"
+      - "12800:12800"
+    environment:
+      - SW_STORAGE=elasticsearch
+      - SW_STORAGE_ES_CLUSTER_NODES=elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - zhuji-network
+
+  skywalking-ui:
+    image: apache/skywalking-ui:9.5.0
+    container_name: zhuji-skywalking-ui
+    ports:
+      - "8080:8080"
+    environment:
+      - SW_OAP_ADDRESS=http://skywalking-oap:12800
+    depends_on:
+      - skywalking-oap
+    networks:
+      - zhuji-network
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: zhuji-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - zhuji-network
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: zhuji-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - zhuji-network
+
+networks:
+  zhuji-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  redis-data1:
+  redis-data2:
+  redis-data3:
+  rabbitmq-data:
+  zookeeper-data:
+  kafka-data:
+  elasticsearch-data:
+  prometheus-data:
+  grafana-data:
