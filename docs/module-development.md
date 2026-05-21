@@ -1,34 +1,35 @@
 # 筑基 (Zhuji) 模块开发指南
+# Zhuji Module Development Guide
 
-## 目录
-1. [快速开始](#1-快速开始)
-2. [模块开发规范](#2-模块开发规范)
-3. [通用模块开发](#3-通用模块开发)
-4. [业务模块开发](#4-业务模块开发)
-5. [API 开发规范](#5-api-开发规范)
-6. [测试规范](#6-测试规范)
-7. [最佳实践](#7-最佳实践)
-8. [常见问题](#8-常见问题)
+## 目录 | Table of Contents
+1. [快速开始 | Quick Start](#1-快速开始--quick-start)
+2. [模块开发规范 | Module Development Standards](#2-模块开发规范--module-development-standards)
+3. [通用模块开发 | Common Module Development](#3-通用模块开发--common-module-development)
+4. [业务模块开发 | Business Module Development](#4-业务模块开发--business-module-development)
+5. [API 开发规范 | API Development Standards](#5-api-开发规范--api-development-standards)
+6. [测试规范 | Testing Standards](#6-测试规范--testing-standards)
+7. [最佳实践 | Best Practices](#7-最佳实践--best-practices)
+8. [常见问题 | FAQs](#8-常见问题--faqs)
 
 ---
 
-## 1. 快速开始
+## 1. 快速开始 | Quick Start
 
-### 1.1 环境准备
-**必需环境**:
+### 1.1 环境准备 | Environment Preparation
+**必需环境 | Required Environment**:
 - JDK 17+
 - Maven 3.9+
 - MySQL 8.0+
 - Redis 7.x+
 - Nacos 2.3+
 
-**推荐 IDE**:
-- IntelliJ IDEA (推荐)
-- VS Code + Java 插件
+**推荐 IDE | Recommended IDE**:
+- IntelliJ IDEA (推荐 | recommended)
+- VS Code + Java 插件 | VS Code + Java plugins
 
-### 1.2 创建新模块
+### 1.2 创建新模块 | Create New Module
 
-**步骤 1: 使用 Maven 原型创建模块**
+**步骤 1: 使用 Maven 原型创建模块 | Step 1: Create Module with Maven Archetype**
 ```bash
 cd zhuji-project
 mvn archetype:generate \
@@ -40,22 +41,22 @@ mvn archetype:generate \
   -Dversion=1.0.0-SNAPSHOT
 ```
 
-**步骤 2: 手动创建模块结构**
+**步骤 2: 手动创建模块结构 | Step 2: Manually Create Module Structure**
 ```
 your-module/
 ├── pom.xml
 └── src/
     ├── main/
     │   ├── java/com/zhuji/modules/yourmodule/
-    │   │   ├── controller/      # API 控制器
-    │   │   ├── service/         # 业务服务接口
-    │   │   │   └── impl/       # 业务服务实现
-    │   │   ├── repository/      # 数据访问层
-    │   │   ├── domain/          # 实体类
-    │   │   ├── dto/             # 数据传输对象
-    │   │   ├── vo/              # 视图对象
-    │   │   ├── config/          # 配置类
-    │   │   └── YourModuleApplication.java  # 启动类
+    │   │   ├── controller/      # API 控制器 | API controllers
+    │   │   ├── service/         # 业务服务接口 | business service interfaces
+    │   │   │   └── impl/       # 业务服务实现 | business service implementations
+    │   │   ├── repository/      # 数据访问层 | data access layer
+    │   │   ├── domain/          # 实体类 | entity classes
+    │   │   ├── dto/             # 数据传输对象 | data transfer objects
+    │   │   ├── vo/              # 视图对象 | view objects
+    │   │   ├── config/          # 配置类 | configuration classes
+    │   │   └── YourModuleApplication.java  # 启动类 | bootstrap class
     │   └── resources/
     │       ├── application.yml
     │       ├── mapper/          # MyBatis Mapper XML
@@ -65,10 +66,10 @@ your-module/
             └── YourModuleTest.java
 ```
 
-**步骤 3: 配置 pom.xml**
+**步骤 3: 配置 pom.xml | Step 3: Configure pom.xml**
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0">
+<project xmlns="http://maven.apache.org/POM/4.0">
     <modelVersion>4.0.0</modelVersion>
     
     <parent>
@@ -80,10 +81,10 @@ your-module/
     <artifactId>your-module</artifactId>
     <packaging>jar</packaging>
     <name>your-module</name>
-    <description>你的模块描述</description>
+    <description>你的模块描述 | Your module description</description>
     
     <dependencies>
-        <!-- 依赖公共模块 -->
+        <!-- 依赖公共模块 | Dependencies on common modules -->
         <dependency>
             <groupId>com.zhuji</groupId>
             <artifactId>common-core</artifactId>
@@ -102,46 +103,46 @@ your-module/
 
 ---
 
-## 2. 模块开发规范
+## 2. 模块开发规范 | Module Development Standards
 
-### 2.1 包结构规范
+### 2.1 包结构规范 | Package Structure Standards
 ```
 com.zhuji.modules.{module-name}/
-├── controller/       # API 层：接收请求，参数校验，返回响应
-├── service/          # 业务层接口
-│   └── impl/       # 业务层实现
-├── repository/       # 数据访问层接口
-│   └── impl/       # 数据访问层实现（可选）
-├── domain/           # 实体模型（JPA 注解）
-├── dto/              # 数据传输对象（接收请求）
-├── vo/               # 视图对象（返回响应）
-├── config/           # Spring 配置类
-├── aspect/           # AOP 切面
-├── listener/         # 事件监听器
-├── handler/          # 处理器（如异常处理器）
-├── util/             # 工具类
-└── constants/        # 常量定义
+├── controller/       # API 层：接收请求，参数校验，返回响应 | API layer: receive requests, validate parameters, return responses
+├── service/          # 业务层接口 | business layer interfaces
+│   └── impl/       # 业务层实现 | business layer implementations
+├── repository/       # 数据访问层接口 | data access layer interfaces
+│   └── impl/       # 数据访问层实现（可选）| data access layer implementations (optional)
+├── domain/           # 实体模型（JPA 注解）| entity models (JPA annotations)
+├── dto/              # 数据传输对象（接收请求）| data transfer objects (for requests)
+├── vo/               # 视图对象（返回响应）| view objects (for responses)
+├── config/           # Spring 配置类 | Spring configuration classes
+├── aspect/           # AOP 切面 | AOP aspects
+├── listener/         # 事件监听器 | event listeners
+├── handler/          # 处理器（如异常处理器）| handlers (e.g., exception handlers)
+├── util/             # 工具类 | utility classes
+└── constants/        # 常量定义 | constant definitions
 ```
 
-### 2.2 命名规范
-| 类型 | 命名规则 | 示例 |
-|------|---------|------|
-| 控制器 | XxxController | UserController |
-| 服务接口 | XxxService | UserService |
-| 服务实现 | XxxServiceImpl | UserServiceImpl |
-| 数据访问接口 | XxxRepository | UserRepository |
-| 实体类 | Xxx | User |
-| DTO | XxxDTO / XxxRequest / XxxParam | UserDTO / CreateUserRequest |
-| VO | XxxVO / XxxResponse | UserVO / UserResponse |
-| Mapper (MyBatis) | XxxMapper | UserMapper |
+### 2.2 命名规范 | Naming Standards
+| 类型 | Type | 命名规则 | Naming Rule | 示例 | Example |
+|------|------|----------|-------------|------|---------|
+| 控制器 | Controller | XxxController | UserController |
+| 服务接口 | Service Interface | XxxService | UserService |
+| 服务实现 | Service Implementation | XxxServiceImpl | UserServiceImpl |
+| 数据访问接口 | Repository Interface | XxxRepository | UserRepository |
+| 实体类 | Entity | Xxx | User |
+| DTO | DTO | XxxDTO / XxxRequest / XxxParam | UserDTO / CreateUserRequest |
+| VO | VO | XxxVO / XxxResponse | UserVO / UserResponse |
+| Mapper (MyBatis) | Mapper (MyBatis) | XxxMapper | UserMapper |
 
-### 2.3 代码规范
-**使用 Lombok 简化代码**:
+### 2.3 代码规范 | Code Standards
+**使用 Lombok 简化代码 | Simplify Code with Lombok**:
 ```java
 @Data               // getter + setter
-@Builder            // 建造者模式
-@NoArgsConstructor  // 无参构造
-@AllArgsConstructor // 全参构造
+@Builder            // 建造者模式 | builder pattern
+@NoArgsConstructor  // 无参构造 | no-args constructor
+@AllArgsConstructor // 全参构造 | all-args constructor
 public class UserDTO {
     private Long id;
     private String username;
@@ -149,38 +150,38 @@ public class UserDTO {
 }
 ```
 
-**使用 Hutool 工具库**:
+**使用 Hutool 工具库 | Use Hutool Tool Library**:
 ```java
-// 字符串工具
+// 字符串工具 | String utilities
 StrUtil.isNotBlank(str);
 
-// 日期工具
+// 日期工具 | Date utilities
 DateUtil.date();
 
-// JSON 工具
-JSONUtil.toJsonStr(obj);
+// JSON 工具 | JSON utilities
+JSONUtil.toJSONString(obj);
 ```
 
 ---
 
-## 3. 通用模块开发
+## 3. 通用模块开发 | Common Module Development
 
-### 3.1 common-core 模块
-**职责**: 提供全局通用的常量、枚举、异常、工具类
+### 3.1 common-core 模块 | common-core Module
+**职责 | Responsibilities**: 提供全局通用的常量、枚举、异常、工具类 | Provide global common constants, enums, exceptions, utility classes
 
-**目录结构**:
+**目录结构 | Directory Structure**:
 ```
 common-core/
-├── constants/       # 全局常量
-├── enums/           # 全局枚举
-├── exception/       # 全局异常
-├── util/            # 工具类
-└── base/            # 基础抽象类
+├── constants/       # 全局常量 | global constants
+├── enums/           # 全局枚举 | global enums
+├── exception/       # 全局异常 | global exceptions
+├── util/            # 工具类 | utility classes
+└── base/            # 基础抽象类 | base abstract classes
 ```
 
-**示例代码**:
+**示例代码 | Example Code**:
 
-*全局异常基类*:
+*全局异常基类 | Global Exception Base Class*:
 ```java
 package com.zhuji.common.core.exception;
 
@@ -201,17 +202,17 @@ public class BusinessException extends RuntimeException {
 }
 ```
 
-*全局错误码枚举*:
+*全局错误码枚举 | Global Error Code Enum*:
 ```java
 package com.zhuji.common.core.enums;
 
 public enum ErrorCode {
-    SUCCESS(200, "成功"),
-    BAD_REQUEST(400, "请求参数错误"),
-    UNAUTHORIZED(401, "未授权"),
-    FORBIDDEN(403, "禁止访问"),
-    NOT_FOUND(404, "资源不存在"),
-    INTERNAL_SERVER_ERROR(500, "服务器内部错误");
+    SUCCESS(200, "成功 | Success"),
+    BAD_REQUEST(400, "请求参数错误 | Bad Request"),
+    UNAUTHORIZED(401, "未授权 | Unauthorized"),
+    FORBIDDEN(403, "禁止访问 | Forbidden"),
+    NOT_FOUND(404, "资源不存在 | Not Found"),
+    INTERNAL_SERVER_ERROR(500, "服务器内部错误 | Internal Server Error");
     
     private Integer code;
     private String message;
@@ -225,12 +226,12 @@ public enum ErrorCode {
 }
 ```
 
-### 3.2 common-security 模块
-**职责**: 提供统一的安全认证和授权功能
+### 3.2 common-security 模块 | common-security Module
+**职责 | Responsibilities**: 提供统一的安全认证和授权功能 | Provide unified security authentication and authorization features
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*JWT 工具类*:
+*JWT 工具类 | JWT Utility Class*:
 ```java
 @Component
 public class JwtTokenProvider {
@@ -260,7 +261,7 @@ public class JwtTokenProvider {
 }
 ```
 
-*Spring Security 配置*:
+*Spring Security 配置 | Spring Security Configuration*:
 ```java
 @Configuration
 @EnableWebSecurity
@@ -281,12 +282,12 @@ public class SecurityConfig {
 }
 ```
 
-### 3.3 common-cache 模块
-**职责**: 封装 Redis 操作，提供缓存注解，支持分布式锁
+### 3.3 common-cache 模块 | common-cache Module
+**职责 | Responsibilities**: 封装 Redis 操作，提供缓存注解，支持分布式锁 | Encapsulate Redis operations, provide cache annotations, support distributed locks
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*Redis 配置*:
+*Redis 配置 | Redis Configuration*:
 ```java
 @Configuration
 public class RedisConfig {
@@ -301,7 +302,7 @@ public class RedisConfig {
 }
 ```
 
-*缓存注解*:
+*缓存注解 | Cache Annotations*:
 ```java
 @Service
 public class UserService {
@@ -317,12 +318,12 @@ public class UserService {
 }
 ```
 
-### 3.4 common-i18n 模块
-**职责**: 提供多语言支持，支持数据库消息存储和缓存
+### 3.4 common-i18n 模块 | common-i18n Module
+**职责 | Responsibilities**: 提供多语言支持，支持数据库消息存储和缓存 | Provide multi-language support, support database message storage and caching
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*国际化配置*:
+*国际化配置 | I18n Configuration*:
 ```java
 @Configuration
 public class I18nConfig {
@@ -336,7 +337,7 @@ public class I18nConfig {
 }
 ```
 
-*消息工具类*:
+*消息工具类 | Message Utility Class*:
 ```java
 @Component
 public class I18nMessageUtil {
@@ -349,12 +350,12 @@ public class I18nMessageUtil {
 }
 ```
 
-### 3.5 common-mq 模块
-**职责**: 封装消息队列操作，支持 RabbitMQ
+### 3.5 common-mq 模块 | common-mq Module
+**职责 | Responsibilities**: 封装消息队列操作，支持 RabbitMQ | Encapsulate message queue operations, support RabbitMQ
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*消息发送者*:
+*消息发送者 | Message Sender*:
 ```java
 @Component
 public class RabbitMQSender {
@@ -367,23 +368,23 @@ public class RabbitMQSender {
 }
 ```
 
-*消息监听器*:
+*消息监听器 | Message Listener*:
 ```java
 @Component
 public class RabbitMQListener {
     @RabbitListener(queues = "example.queue")
     public void handleMessage(String message) {
-        // 处理消息
+        // 处理消息 | Handle message
     }
 }
 ```
 
-### 3.6 common-task 模块
-**职责**: 提供定时任务支持，支持任务日志
+### 3.6 common-task 模块 | common-task Module
+**职责 | Responsibilities**: 提供定时任务支持，支持任务日志 | Provide scheduled task support, support task logs
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*定时任务配置*:
+*定时任务配置 | Scheduled Task Configuration*:
 ```java
 @Configuration
 @EnableScheduling
@@ -398,24 +399,24 @@ public class TaskConfig {
 }
 ```
 
-*定时任务示例*:
+*定时任务示例 | Scheduled Task Example*:
 ```java
 @Component
 public class ExampleTask {
     @Scheduled(cron = "0 0 * * * ?")
-    @ScheduledLog(description = "示例定时任务")
+    @ScheduledLog(description = "示例定时任务 | Example Scheduled Task")
     public void execute() {
-        // 任务逻辑
+        // 任务逻辑 | Task logic
     }
 }
 ```
 
-### 3.7 common-monitor 模块
-**职责**: 提供监控支持，集成 Prometheus 和 Zipkin
+### 3.7 common-monitor 模块 | common-monitor Module
+**职责 | Responsibilities**: 提供监控支持，集成 Prometheus 和 Zipkin | Provide monitoring support, integrate Prometheus and Zipkin
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*监控配置*:
+*监控配置 | Monitoring Configuration*:
 ```java
 @Configuration
 public class MonitorConfig {
@@ -426,12 +427,12 @@ public class MonitorConfig {
 }
 ```
 
-### 3.8 common-crypto 模块
-**职责**: 提供加密支持，集成 Jasypt
+### 3.8 common-crypto 模块 | common-crypto Module
+**职责 | Responsibilities**: 提供加密支持，集成 Jasypt | Provide encryption support, integrate Jasypt
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*加密工具类*:
+*加密工具类 | Encryption Utility Class*:
 ```java
 @Component
 public class CryptoUtil {
@@ -448,27 +449,27 @@ public class CryptoUtil {
 }
 ```
 
-### 3.9 common-export 模块
-**职责**: 提供导出支持，集成 EasyExcel
+### 3.9 common-export 模块 | common-export Module
+**职责 | Responsibilities**: 提供导出支持，集成 EasyExcel | Provide export support, integrate EasyExcel
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*Excel导出工具*:
+*Excel导出工具 | Excel Export Utility*:
 ```java
 @Component
 public class ExcelExportUtil {
     public void export(HttpServletResponse response, List<?> data, Class<?> clazz, String fileName) {
-        // 使用 EasyExcel 导出
+        // 使用 EasyExcel 导出 | Export using EasyExcel
     }
 }
 ```
 
-### 3.10 common-audit 模块
-**职责**: 提供审计日志支持
+### 3.10 common-audit 模块 | common-audit Module
+**职责 | Responsibilities**: 提供审计日志支持 | Provide audit log support
 
-**核心类**:
+**核心类 | Core Classes**:
 
-*审计日志注解*:
+*审计日志注解 | Audit Log Annotation*:
 ```java
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -478,14 +479,14 @@ public @interface AuditLog {
 }
 ```
 
-*审计日志切面*:
+*审计日志切面 | Audit Log Aspect*:
 ```java
 @Aspect
 @Component
 public class AuditLogAspect {
     @Around("@annotation(auditLog)")
     public Object audit(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
-        // 记录审计日志
+        // 记录审计日志 | Record audit log
         return joinPoint.proceed();
     }
 }
@@ -493,12 +494,12 @@ public class AuditLogAspect {
 
 ---
 
-## 4. 业务模块开发
+## 4. 业务模块开发 | Business Module Development
 
-### 4.1 用户组织模块 (user-org-service)
-**实体设计**:
+### 4.1 用户组织模块 (user-org-service) | User Organization Module (user-org-service)
+**实体设计 | Entity Design**:
 
-*User 实体*:
+*User 实体 | User Entity*:
 ```java
 @Data
 @TableName("sys_user")
@@ -510,7 +511,7 @@ public class User {
     private String password;
     private String email;
     private String phone;
-    private Integer status; // 0-禁用 1-启用
+    private Integer status; // 0-禁用 | 0-disabled, 1-启用 | 1-enabled
     
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
@@ -520,7 +521,7 @@ public class User {
 }
 ```
 
-*OrgUnit 实体（树形结构）*:
+*OrgUnit 实体（树形结构）| OrgUnit Entity (Tree Structure)*:
 ```java
 @Data
 @TableName("sys_org_unit")
@@ -529,26 +530,26 @@ public class OrgUnit {
     private Long id;
     
     private String name;
-    private Long parentId; // 父级组织 ID
-    private Integer level;  // 层级
-    private String path;     // 层级路径，如 /1/3/5
+    private Long parentId; // 父级组织 ID | Parent organization ID
+    private Integer level;  // 层级 | Level
+    private String path;     // 层级路径，如 /1/3/5 | Hierarchy path, e.g., /1/3/5
     
     @TableField(exist = false)
-    private List<OrgUnit> children; // 子节点（非数据库字段）
+    private List<OrgUnit> children; // 子节点（非数据库字段）| Child nodes (non-database field)
 }
 ```
 
-**Repository 层**:
+**Repository 层 | Repository Layer**:
 ```java
 @Mapper
 public interface UserRepository extends BaseMapper<User> {
-    // 自定义 SQL（可选）
+    // 自定义 SQL（可选）| Custom SQL (optional)
     @Select("SELECT * FROM sys_user WHERE username = #{username}")
     User findByUsername(@Param("username") String username);
 }
 ```
 
-**Service 层**:
+**Service 层 | Service Layer**:
 ```java
 public interface UserService {
     User getUserById(Long id);
@@ -579,7 +580,7 @@ public class UserServiceImpl implements UserService {
 }
 ```
 
-**Controller 层**:
+**Controller 层 | Controller Layer**:
 ```java
 @RestController
 @RequestMapping("/api/v1/users")
@@ -605,10 +606,10 @@ public class UserController {
 
 ---
 
-## 5. API 开发规范
+## 5. API 开发规范 | API Development Standards
 
-### 5.1 统一响应格式
-**ApiResponse 类**:
+### 5.1 统一响应格式 | Unified Response Format
+**ApiResponse 类 | ApiResponse Class**:
 ```java
 @Data
 @Builder
@@ -621,7 +622,7 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
                 .code(200)
-                .message("成功")
+                .message("成功 | Success")
                 .data(data)
                 .timestamp(System.currentTimeMillis())
                 .build();
@@ -637,28 +638,28 @@ public class ApiResponse<T> {
 }
 ```
 
-### 5.2 参数校验
-**使用 Bean Validation**:
+### 5.2 参数校验 | Parameter Validation
+**使用 Bean Validation | Use Bean Validation**:
 ```java
 @Data
 public class CreateUserRequest {
-    @NotBlank(message = "用户名不能为空")
-    @Size(min = 3, max = 20, message = "用户名长度必须在 3-20 之间")
+    @NotBlank(message = "用户名不能为空 | Username cannot be blank")
+    @Size(min = 3, max = 20, message = "用户名长度必须在 3-20 之间 | Username must be between 3-20 characters")
     private String username;
     
-    @NotBlank(message = "密码不能为空")
-    @Size(min = 6, max = 20, message = "密码长度必须在 6-20 之间")
+    @NotBlank(message = "密码不能为空 | Password cannot be blank")
+    @Size(min = 6, max = 20, message = "密码长度必须在 6-20 之间 | Password must be between 6-20 characters")
     private String password;
     
-    @Email(message = "邮箱格式不正确")
+    @Email(message = "邮箱格式不正确 | Invalid email format")
     private String email;
     
-    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确 | Invalid phone format")
     private String phone;
 }
 ```
 
-**全局异常处理**:
+**全局异常处理 | Global Exception Handling**:
 ```java
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -675,14 +676,14 @@ public class GlobalExceptionHandler {
 }
 ```
 
-### 5.3 API 版本管理
-**URL 路径版本控制**:
+### 5.3 API 版本控制 | API Version Control
+**URL 路径版本控制 | URL Path Version Control**:
 ```
-/api/v1/users     # 版本 1
-/api/v2/users     # 版本 2
+/api/v1/users     # 版本 1 | Version 1
+/api/v2/users     # 版本 2 | Version 2
 ```
 
-**请求头版本控制**:
+**请求头版本控制 | Header Version Control**:
 ```java
 @RequestMapping(value = "/users", headers = "X-API-Version=1")
 public class UserControllerV1 { }
@@ -693,10 +694,10 @@ public class UserControllerV2 { }
 
 ---
 
-## 6. 测试规范
+## 6. 测试规范 | Testing Standards
 
-### 6.1 单元测试
-**Service 层测试**:
+### 6.1 单元测试 | Unit Testing
+**Service 层测试 | Service Layer Testing**:
 ```java
 @SpringBootTest
 class UserServiceTest {
@@ -708,24 +709,24 @@ class UserServiceTest {
     
     @Test
     void testGetUserById() {
-        // 准备数据
+        // 准备数据 | Prepare data
         User mockUser = new User();
         mockUser.setId(1L);
         mockUser.setUsername("test");
         when(userRepository.selectById(1L)).thenReturn(mockUser);
         
-        // 执行测试
+        // 执行测试 | Execute test
         User result = userService.getUserById(1L);
         
-        // 验证结果
+        // 验证结果 | Verify result
         assertEquals("test", result.getUsername());
         verify(userRepository).selectById(1L);
     }
 }
 ```
 
-### 6.2 集成测试
-**Controller 层测试**:
+### 6.2 集成测试 | Integration Testing
+**Controller 层测试 | Controller Layer Testing**:
 ```java
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -744,29 +745,29 @@ class UserControllerTest {
 }
 ```
 
-### 6.3 压力测试
-**使用 JMeter**:
-1. 创建测试计划
-2. 添加线程组（模拟用户）
-3. 添加 HTTP 请求（调用 API）
-4. 添加聚合报告（查看结果）
+### 6.3 压力测试 | Load Testing
+**使用 JMeter | Use JMeter**:
+1. 创建测试计划 | Create test plan
+2. 添加线程组（模拟用户）| Add thread group (simulate users)
+3. 添加 HTTP 请求（调用 API）| Add HTTP requests (call APIs)
+4. 添加聚合报告（查看结果）| Add aggregate report (view results)
 
 ---
 
-## 7. 最佳实践
+## 7. 最佳实践 | Best Practices
 
-### 7.1 DDD 领域驱动设计
-**分层架构**:
+### 7.1 DDD 领域驱动设计 | DDD Domain-Driven Design
+**分层架构 | Layered Architecture**:
 ```
-interfaces/      # 用户接口层：API 控制器
-application/     # 应用层：用例编排（无业务逻辑）
-domain/          # 领域层：核心业务逻辑（实体、值对象、领域服务）
-infrastructure/  # 基础设施层：数据访问、外部服务调用
+interfaces/      # 用户接口层：API 控制器 | User interface layer: API controllers
+application/     # 应用层：用例编排（无业务逻辑）| Application layer: use case orchestration (no business logic)
+domain/          # 领域层：核心业务逻辑（实体、值对象、领域服务）| Domain layer: core business logic (entities, value objects, domain services)
+infrastructure/  # 基础设施层：数据访问、外部服务调用 | Infrastructure layer: data access, external service calls
 ```
 
-**示例**:
+**示例 | Example**:
 ```java
-// interfaces 层
+// interfaces 层 | interfaces layer
 @RestController
 public class UserController {
     private final UserApplicationService userAppService;
@@ -779,7 +780,7 @@ public class UserController {
     }
 }
 
-// application 层
+// application 层 | application layer
 @Service
 @RequiredArgsConstructor
 public class UserApplicationService {
@@ -788,33 +789,33 @@ public class UserApplicationService {
     
     @Transactional
     public void createUser(CreateUserCommand command) {
-        // 1. 校验业务规则
+        // 1. 校验业务规则 | Validate business rules
         userDomainService.checkUsernameUnique(command.getUsername());
         
-        // 2. 创建领域对象
+        // 2. 创建领域对象 | Create domain object
         User user = User.create(command.getUsername(), command.getPassword());
         
-        // 3. 持久化
+        // 3. 持久化 | Persist
         userRepository.save(user);
         
-        // 4. 发布领域事件
+        // 4. 发布领域事件 | Publish domain event
         userDomainService.publishEvent(new UserCreatedEvent(user.getId()));
     }
 }
 
-// domain 层
+// domain 层 | domain layer
 @Service
 public class UserDomainService {
     public void checkUsernameUnique(String username) {
-        // 业务逻辑：检查用户名唯一性
+        // 业务逻辑：检查用户名唯一性 | Business logic: Check username uniqueness
     }
     
     public void publishEvent(Object event) {
-        // 发布领域事件
+        // 发布领域事件 | Publish domain event
     }
 }
 
-// infrastructure 层
+// infrastructure 层 | infrastructure layer
 @Repository
 public class UserRepositoryImpl implements UserRepository {
     private final UserMapper userMapper;
@@ -826,37 +827,37 @@ public class UserRepositoryImpl implements UserRepository {
 }
 ```
 
-### 7.2 事务管理
-**声明式事务**:
+### 7.2 事务管理 | Transaction Management
+**声明式事务 | Declarative Transactions**:
 ```java
 @Service
 public class UserService {
     @Transactional(rollbackFor = Exception.class)
     public void createUser(UserDTO dto) {
-        // 业务逻辑
+        // 业务逻辑 | Business logic
     }
 }
 ```
 
-**分布式事务 (Seata)**:
+**分布式事务 (Seata) | Distributed Transaction (Seata)**:
 ```java
 @Service
 public class OrderService {
     @GlobalTransactional(name = "create-order", rollbackFor = Exception.class)
     public void createOrder(CreateOrderRequest request) {
-        // 1. 创建订单（订单服务）
+        // 1. 创建订单（订单服务）| 1. Create order (order service)
         orderClient.createOrder(request);
         
-        // 2. 扣减库存（库存服务）
+        // 2. 扣减库存（库存服务）| 2. Deduct inventory (inventory service)
         inventoryClient.deductInventory(request);
         
-        // 3. 扣减账户余额（账户服务）
+        // 3. 扣减账户余额（账户服务）| 3. Deduct account balance (account service)
         accountClient.deductBalance(request);
     }
 }
 ```
 
-### 7.3 异步处理
+### 7.3 异步处理 | Async Processing
 **Spring Async**:
 ```java
 @Configuration
@@ -877,7 +878,7 @@ public class AsyncConfig {
 public class NotificationService {
     @Async("taskExecutor")
     public CompletableFuture<Void> sendEmail(String to, String subject, String body) {
-        // 发送邮件逻辑
+        // 发送邮件逻辑 | Send email logic
         return CompletableFuture.completedFuture(null);
     }
 }
@@ -885,10 +886,10 @@ public class NotificationService {
 
 ---
 
-## 8. 常见问题
+## 8. 常见问题 | FAQs
 
-### Q1: 如何集成 MyBatis-Plus？
-**A**: 添加依赖并配置：
+### Q1: 如何集成 MyBatis-Plus？| How to integrate MyBatis-Plus?
+**A**: 添加依赖并配置 | Add dependency and configure:
 ```xml
 <dependency>
     <groupId>com.baomidou</groupId>
@@ -906,8 +907,8 @@ mybatis-plus:
       id-type: auto
 ```
 
-### Q2: 如何实现多数据源？
-**A**: 使用 MyBatis-Plus 动态数据源：
+### Q2: 如何实现多数据源？| How to implement multi-data source?
+**A**: 使用 MyBatis-Plus 动态数据源 | Use MyBatis-Plus dynamic data source:
 ```java
 @Configuration
 public class DataSourceConfig {
@@ -926,14 +927,14 @@ public class DataSourceConfig {
 }
 ```
 
-### Q3: 如何实现接口幂等性？
-**A**: 使用 Redis + Token 机制：
+### Q3: 如何实现接口幂等性？| How to implement API idempotency?
+**A**: 使用 Redis + Token 机制 | Use Redis + Token mechanism:
 ```java
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Idempotent {
     String key() default "";
-    int expire() default 60; // 过期时间（秒）
+    int expire() default 60; // 过期时间（秒）| Expire time (seconds)
 }
 
 @Aspect
@@ -946,13 +947,13 @@ public class IdempotentAspect {
     public Object checkIdempotent(ProceedingJoinPoint joinPoint, Idempotent idempotent) throws Throwable {
         String token = HttpContextUtil.getRequest().getHeader("Idempotent-Token");
         if (StrUtil.isBlank(token)) {
-            throw new BusinessException(400, "幂等 Token 不能为空");
+            throw new BusinessException(400, "幂等 Token 不能为空 | Idempotent token cannot be blank");
         }
         
         String key = "idempotent:" + idempotent.key() + ":" + token;
         Boolean success = redisTemplate.opsForValue().setIfAbsent(key, "1", Duration.ofSeconds(idempotent.expire()));
         if (Boolean.FALSE.equals(success)) {
-            throw new BusinessException(400, "重复请求");
+            throw new BusinessException(400, "重复请求 | Duplicate request");
         }
         
         return joinPoint.proceed();
@@ -962,14 +963,14 @@ public class IdempotentAspect {
 
 ---
 
-## 附录
+## 附录 | Appendix
 
-### A. 参考文档
-- [Spring Boot 官方文档](https://spring.io/projects/spring-boot)
-- [MyBatis-Plus 官方文档](https://baomidou.com/)
-- [DDD 领域驱动设计](https://domainlanguage.com/)
+### A. 参考文档 | References
+- [Spring Boot 官方文档 | Spring Boot Official Documentation](https://spring.io/projects/spring-boot)
+- [MyBatis-Plus 官方文档 | MyBatis-Plus Official Documentation](https://baomidou.com/)
+- [DDD 领域驱动设计 | DDD Domain-Driven Design](https://domainlanguage.com/)
 
-### B. 常用依赖
+### B. 常用依赖 | Common Dependencies
 ```xml
 <!-- Lombok -->
 <dependency>
@@ -992,6 +993,6 @@ public class IdempotentAspect {
 
 ---
 
-**文档版本**: v1.1  
-**最后更新**: 2026-05-21  
-**维护者**: 筑基架构团队
+**文档版本 | Document Version**: v1.1  
+**最后更新 | Last Updated**: 2026-05-21  
+**维护者 | Maintainers**: 筑基架构团队 | Zhuji Architecture Team

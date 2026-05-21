@@ -1,6 +1,6 @@
-# 筑基 (Zhuji) API 接口文档
+# 筑基 (Zhuji) API 接口文档 | API Documentation
 
-## 目录
+## 目录 | Table of Contents
 1. [API 概览](#1-api-概览)
 2. [认证授权](#2-认证授权)
 3. [用户组织 API](#3-用户组织-api)
@@ -13,22 +13,22 @@
 
 ---
 
-## 1. API 概览
+## 1. API 概览 | API Overview
 
-### 1.1 基础信息
+### 1.1 基础信息 | Basic Information
 - **Base URL**: `https://api.zhuji.com/api/v1`
-- **协议**: HTTPS
-- **认证方式**: JWT Bearer Token / OAuth2
-- **数据格式**: JSON
-- **字符编码**: UTF-8
+- **协议 | Protocol**: HTTPS
+- **认证方式 | Authentication**: JWT Bearer Token / OAuth2
+- **数据格式 | Data Format**: JSON
+- **字符编码 | Character Encoding**: UTF-8
 
-### 1.2 API 版本控制
+### 1.2 API 版本控制 | API Versioning
 ```
-https://api.zhuji.com/api/v1/users     # 版本 1
-https://api.zhuji.com/api/v2/users     # 版本 2
+https://api.zhuji.com/api/v1/users     # 版本 1 | Version 1
+https://api.zhuji.com/api/v2/users     # 版本 2 | Version 2
 ```
 
-### 1.3 接口列表
+### 1.3 接口列表 | API List
 | 模块 | 基础路径 | 说明 |
 |------|---------|------|
 | 认证 | `/api/v1/auth` | 登录、登出、刷新 Token |
@@ -41,10 +41,10 @@ https://api.zhuji.com/api/v2/users     # 版本 2
 
 ---
 
-## 2. 认证授权
+## 2. 认证授权 | Authentication
 
-### 2.1 登录接口
-**请求**:
+### 2.1 登录接口 | Login
+**请求 | Request**:
 ```
 POST /api/v1/auth/login
 Content-Type: application/json
@@ -55,11 +55,11 @@ Content-Type: application/json
 }
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
     "refreshToken": "eyJhbGciOiJSUzI1NiJ9...",
@@ -70,14 +70,14 @@ Content-Type: application/json
 }
 ```
 
-### 2.2 使用 Token 访问
-在后续请求中，在 Header 中携带 Token：
+### 2.2 使用 Token 访问 | Access with Token
+在后续请求中，在 Header 中携带 Token：| Include Token in Header for subsequent requests:
 ```
 Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
 ```
 
-### 2.3 刷新 Token
-**请求**:
+### 2.3 刷新 Token | Refresh Token
+**请求 | Request**:
 ```
 POST /api/v1/auth/refresh
 Content-Type: application/json
@@ -87,11 +87,11 @@ Content-Type: application/json
 }
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "accessToken": "eyJhbGciOiJIUzUxMiJ9...",
     "expiresIn": 3600
@@ -100,23 +100,23 @@ Content-Type: application/json
 }
 ```
 
-### 2.4 OAuth2 第三方登录
-**请求**:
+### 2.4 OAuth2 第三方登录 | OAuth2 Third-Party Login
+**请求 | Request**:
 ```
 GET /api/v1/auth/oauth2/authorize?provider=dingtalk&redirect_uri=https://app.zhuji.com/callback
 ```
 
-**回调**:
+**回调 | Callback**:
 ```
 GET /api/v1/auth/oauth2/callback?code=xxx&state=yyy
 ```
 
 ---
 
-## 3. 用户组织 API
+## 3. 用户组织 API | User Organization API
 
-### 3.1 创建用户
-**请求**:
+### 3.1 创建用户 | Create User
+**请求 | Request**:
 ```
 POST /api/v1/users
 Content-Type: application/json
@@ -132,11 +132,11 @@ Authorization: Bearer {token}
 }
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "id": 1001,
     "username": "zhangsan",
@@ -149,18 +149,18 @@ Authorization: Bearer {token}
 }
 ```
 
-### 3.2 获取用户详情
-**请求**:
+### 3.2 获取用户详情 | Get User Details
+**请求 | Request**:
 ```
 GET /api/v1/users/{id}
 Authorization: Bearer {token}
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "id": 1001,
     "username": "zhangsan",
@@ -169,7 +169,7 @@ Authorization: Bearer {token}
     "status": 1,
     "org": {
       "id": 1001,
-      "name": "技术部"
+      "name": "技术部 | Tech Department"
     },
     "roles": [
       {
@@ -183,18 +183,18 @@ Authorization: Bearer {token}
 }
 ```
 
-### 3.3 分页查询用户
-**请求**:
+### 3.3 分页查询用户 | Page Query Users
+**请求 | Request**:
 ```
 GET /api/v1/users?page=0&size=10&username=zhang&status=1
 Authorization: Bearer {token}
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "content": [
       {
@@ -215,8 +215,8 @@ Authorization: Bearer {token}
 }
 ```
 
-### 3.4 更新用户
-**请求**:
+### 3.4 更新用户 | Update User
+**请求 | Request**:
 ```
 PUT /api/v1/users/{id}
 Content-Type: application/json
@@ -229,15 +229,15 @@ Authorization: Bearer {token}
 }
 ```
 
-### 3.5 删除用户
-**请求**:
+### 3.5 删除用户 | Delete User
+**请求 | Request**:
 ```
 DELETE /api/v1/users/{id}
 Authorization: Bearer {token}
 ```
 
-### 3.6 批量导入用户
-**请求**:
+### 3.6 批量导入用户 | Batch Import Users
+**请求 | Request**:
 ```
 POST /api/v1/users/import
 Content-Type: multipart/form-data
@@ -246,27 +246,27 @@ Authorization: Bearer {token}
 file: users.xlsx
 ```
 
-### 3.7 获取组织架构树
-**请求**:
+### 3.7 获取组织架构树 | Get Organization Tree
+**请求 | Request**:
 ```
 GET /api/v1/orgs/tree
 Authorization: Bearer {token}
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": [
     {
       "id": 1,
-      "name": "总公司",
+      "name": "总公司 | Headquarters",
       "parentId": null,
       "children": [
         {
           "id": 2,
-          "name": "技术部",
+          "name": "技术部 | Tech Department",
           "parentId": 1,
           "children": []
         }
@@ -279,31 +279,31 @@ Authorization: Bearer {token}
 
 ---
 
-## 4. 多语言 API
+## 4. 多语言 API | I18n API
 
-### 4.1 获取国际化消息
-**请求**:
+### 4.1 获取国际化消息 | Get I18n Messages
+**请求 | Request**:
 ```
 GET /api/v1/i18n/messages?locale=zh_CN
 Authorization: Bearer {token}
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
-    "user.welcome": "欢迎，{0}！",
-    "user.login.success": "登录成功",
-    "user.login.fail": "登录失败，请检查用户名和密码"
+    "user.welcome": "欢迎，{0}！ | Welcome, {0}!",
+    "user.login.success": "登录成功 | Login successful",
+    "user.login.fail": "登录失败，请检查用户名和密码 | Login failed, please check username and password"
   },
   "timestamp": 1716230400000
 }
 ```
 
-### 4.2 添加国际化消息
-**请求**:
+### 4.2 添加国际化消息 | Add I18n Message
+**请求 | Request**:
 ```
 POST /api/v1/i18n/messages
 Content-Type: application/json
@@ -312,12 +312,12 @@ Authorization: Bearer {token}
 {
   "locale": "zh_CN",
   "key": "user.logout.success",
-  "value": "退出成功"
+  "value": "退出成功 | Logout successful"
 }
 ```
 
-### 4.3 批量导入国际化资源
-**请求**:
+### 4.3 批量导入国际化资源 | Batch Import I18n Resources
+**请求 | Request**:
 ```
 POST /api/v1/i18n/import
 Content-Type: multipart/form-data
@@ -328,48 +328,48 @@ file: i18n_zh_CN.properties
 
 ---
 
-## 5. 工作流 API (Flowable 7.0)
+## 5. 工作流 API (Flowable 7.0) | Workflow API (Flowable 7.0)
 
-### 5.1 流程定义管理
+### 5.1 流程定义管理 | Process Definition Management
 
-#### 5.1.1 部署流程定义
+#### 5.1.1 部署流程定义 | Deploy Process Definition
 ```
 POST /api/v1/process-definitions
 Content-Type: multipart/form-data
 Authorization: Bearer {token}
 
-file: [流程文件.bpmn20.xml]
-name: 请假流程
+file: [流程文件.bpmn20.xml | process-file.bpmn20.xml]
+name: 请假流程 | Leave Process
 category: leave
 ```
 
-#### 5.1.2 查询流程定义
+#### 5.1.2 查询流程定义 | Query Process Definitions
 ```
 GET /api/v1/process-definitions?page=1&size=10
 Authorization: Bearer {token}
 ```
 
-#### 5.1.3 获取流程定义
+#### 5.1.3 获取流程定义 | Get Process Definition
 ```
 GET /api/v1/process-definitions/{id}
 Authorization: Bearer {token}
 ```
 
-#### 5.1.4 挂起流程定义
+#### 5.1.4 挂起流程定义 | Suspend Process Definition
 ```
 PUT /api/v1/process-definitions/{id}/suspend
 Authorization: Bearer {token}
 ```
 
-#### 5.1.5 激活流程定义
+#### 5.1.5 激活流程定义 | Activate Process Definition
 ```
 PUT /api/v1/process-definitions/{id}/activate
 Authorization: Bearer {token}
 ```
 
-### 5.2 流程实例管理
+### 5.2 流程实例管理 | Process Instance Management
 
-#### 5.2.1 启动流程实例
+#### 5.2.1 启动流程实例 | Start Process Instance
 ```
 POST /api/v1/process-instances
 Content-Type: application/json
@@ -380,51 +380,51 @@ Authorization: Bearer {token}
   "businessKey": "LEAVE-2024-001",
   "variables": {
     "applyUser": "admin",
-    "leaveType": "年假",
+    "leaveType": "年假 | Annual Leave",
     "days": 5
   }
 }
 ```
 
-#### 5.2.2 查询流程实例
+#### 5.2.2 查询流程实例 | Query Process Instances
 ```
 GET /api/v1/process-instances?page=1&size=10
 Authorization: Bearer {token}
 ```
 
-#### 5.2.3 获取流程实例详情
+#### 5.2.3 获取流程实例详情 | Get Process Instance Details
 ```
 GET /api/v1/process-instances/{id}
 Authorization: Bearer {token}
 ```
 
-#### 5.2.4 终止流程实例
+#### 5.2.4 终止流程实例 | Terminate Process Instance
 ```
 DELETE /api/v1/process-instances/{id}
 Authorization: Bearer {token}
 ```
 
-### 5.3 任务管理
+### 5.3 任务管理 | Task Management
 
-#### 5.3.1 查询待办任务
+#### 5.3.1 查询待办任务 | Query Pending Tasks
 ```
 GET /api/v1/tasks?assignee=admin&page=1&size=10
 Authorization: Bearer {token}
 ```
 
-#### 5.3.2 获取任务详情
+#### 5.3.2 获取任务详情 | Get Task Details
 ```
 GET /api/v1/tasks/{id}
 Authorization: Bearer {token}
 ```
 
-#### 5.3.3 领取任务
+#### 5.3.3 领取任务 | Claim Task
 ```
 POST /api/v1/tasks/{id}/claim
 Authorization: Bearer {token}
 ```
 
-#### 5.3.4 完成任务
+#### 5.3.4 完成任务 | Complete Task
 ```
 POST /api/v1/tasks/{id}/complete
 Content-Type: application/json
@@ -433,12 +433,12 @@ Authorization: Bearer {token}
 {
   "variables": {
     "approved": true,
-    "comment": "同意请假申请"
+    "comment": "同意请假申请 | Approve leave request"
   }
 }
 ```
 
-#### 5.3.5 转交任务
+#### 5.3.5 转交任务 | Delegate Task
 ```
 POST /api/v1/tasks/{id}/delegate
 Content-Type: application/json
@@ -449,7 +449,7 @@ Authorization: Bearer {token}
 }
 ```
 
-#### 5.3.6 指派任务
+#### 5.3.6 指派任务 | Assign Task
 ```
 POST /api/v1/tasks/{id}/assign
 Content-Type: application/json
@@ -459,13 +459,12 @@ Authorization: Bearer {token}
   "userId": "assignee"
 }
 ```
-```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "processInstanceId": "proc-001",
     "processKey": "leave-approval",
@@ -477,23 +476,23 @@ Authorization: Bearer {token}
 }
 ```
 
-### 5.2 查询待办任务
-**请求**:
+### 5.2 查询待办任务 | Query Pending Tasks
+**请求 | Request**:
 ```
 GET /api/v1/workflows/tasks?assignee=zhangsan&page=0&size=10
 Authorization: Bearer {token}
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "content": [
       {
         "taskId": "task-001",
-        "taskName": "经理审批",
+        "taskName": "经理审批 | Manager Approval",
         "processInstanceId": "proc-001",
         "createTime": "2026-05-20T10:05:00",
         "assignee": "lisi"
@@ -506,8 +505,8 @@ Authorization: Bearer {token}
 }
 ```
 
-### 5.3 完成任务
-**请求**:
+### 5.3 完成任务 | Complete Task
+**请求 | Request**:
 ```
 POST /api/v1/workflows/tasks/{taskId}/complete
 Content-Type: application/json
@@ -516,23 +515,23 @@ Authorization: Bearer {token}
 {
   "variables": {
     "approved": true,
-    "comment": "同意"
+    "comment": "同意 | Approve"
   }
 }
 ```
 
-### 5.4 查询流程历史
-**请求**:
+### 5.4 查询流程历史 | Query Process History
+**请求 | Request**:
 ```
 GET /api/v1/workflows/history/{processInstanceId}
 Authorization: Bearer {token}
 ```
 
-**响应**:
+**响应 | Response**:
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "processInstanceId": "proc-001",
     "processKey": "leave-approval",
@@ -541,13 +540,13 @@ Authorization: Bearer {token}
     "status": "COMPLETED",
     "tasks": [
       {
-        "taskName": "提交申请",
+        "taskName": "提交申请 | Submit Application",
         "assignee": "zhangsan",
         "startTime": "2026-05-20T10:00:00",
         "endTime": "2026-05-20T10:05:00"
       },
       {
-        "taskName": "经理审批",
+        "taskName": "经理审批 | Manager Approval",
         "assignee": "lisi",
         "startTime": "2026-05-20T10:05:00",
         "endTime": "2026-05-20T11:00:00"
@@ -560,10 +559,10 @@ Authorization: Bearer {token}
 
 ---
 
-## 6. API 集成
+## 6. API 集成 | API Integration
 
-### 6.1 注册第三方平台
-**请求**:
+### 6.1 注册第三方平台 | Register Third-Party Platform
+**请求 | Request**:
 ```
 POST /api/v1/integrations
 Content-Type: application/json
@@ -577,8 +576,8 @@ Authorization: Bearer {token}
 }
 ```
 
-### 6.2 调用第三方 API
-**请求**:
+### 6.2 调用第三方 API | Call Third-Party API
+**请求 | Request**:
 ```
 POST /api/v1/integrations/{platform}/call
 Content-Type: application/json
@@ -592,8 +591,8 @@ Authorization: Bearer {token}
 }
 ```
 
-### 6.3 查看集成日志
-**请求**:
+### 6.3 查看集成日志 | View Integration Logs
+**请求 | Request**:
 ```
 GET /api/v1/integrations/logs?platform=dingtalk&status=fail&page=0&size=10
 Authorization: Bearer {token}
@@ -601,23 +600,23 @@ Authorization: Bearer {token}
 
 ---
 
-## 7. 通用响应格式
+## 7. 通用响应格式 | Common Response Format
 
-### 7.1 成功响应
+### 7.1 成功响应 | Success Response
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": { ... },
   "timestamp": 1716230400000
 }
 ```
 
-### 7.2 分页响应
+### 7.2 分页响应 | Pagination Response
 ```json
 {
   "code": 200,
-  "message": "成功",
+  "message": "成功 | Success",
   "data": {
     "content": [ ... ],
     "pageable": {
@@ -631,11 +630,11 @@ Authorization: Bearer {token}
 }
 ```
 
-### 7.3 错误响应
+### 7.3 错误响应 | Error Response
 ```json
 {
   "code": 400,
-  "message": "请求参数错误",
+  "message": "请求参数错误 | Invalid request parameters",
   "data": null,
   "timestamp": 1716230400000
 }
@@ -643,9 +642,9 @@ Authorization: Bearer {token}
 
 ---
 
-## 8. 错误码说明
+## 8. 错误码说明 | Error Codes
 
-### 8.1 通用错误码
+### 8.1 通用错误码 | General Error Codes
 | 错误码 | 说明 | HTTP 状态码 |
 |--------|------|-------------|
 | 200 | 成功 | 200 |
@@ -656,7 +655,7 @@ Authorization: Bearer {token}
 | 409 | 资源冲突（如用户名已存在） | 409 |
 | 500 | 服务器内部错误 | 500 |
 
-### 8.2 业务错误码
+### 8.2 业务错误码 | Business Error Codes
 | 错误码 | 说明 |
 |--------|------|
 | 10001 | 用户名已存在 |
@@ -671,10 +670,10 @@ Authorization: Bearer {token}
 
 ---
 
-## 9. API 调用示例
+## 9. API 调用示例 | API Call Examples
 
-### 9.1 cURL 示例
-**登录**:
+### 9.1 cURL 示例 | cURL Examples
+**登录 | Login**:
 ```bash
 curl -X POST https://api.zhuji.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
@@ -684,13 +683,13 @@ curl -X POST https://api.zhuji.com/api/v1/auth/login \
   }'
 ```
 
-**获取用户列表**:
+**获取用户列表 | Get User List**:
 ```bash
 curl -X GET https://api.zhuji.com/api/v1/users?page=0\&size=10 \
   -H "Authorization: Bearer eyJhbGciOiJIUzUxMiJ9..."
 ```
 
-**创建用户**:
+**创建用户 | Create User**:
 ```bash
 curl -X POST https://api.zhuji.com/api/v1/users \
   -H "Content-Type: application/json" \
@@ -702,9 +701,9 @@ curl -X POST https://api.zhuji.com/api/v1/users \
   }'
 ```
 
-### 9.2 JavaScript (Fetch API) 示例
+### 9.2 JavaScript (Fetch API) 示例 | JavaScript (Fetch API) Example
 ```javascript
-// 登录
+// 登录 | Login
 async function login(username, password) {
   const response = await fetch('https://api.zhuji.com/api/v1/auth/login', {
     method: 'POST',
@@ -721,7 +720,7 @@ async function login(username, password) {
   return data;
 }
 
-// 获取用户列表
+// 获取用户列表 | Get User List
 async function getUsers(page, size) {
   const token = localStorage.getItem('accessToken');
   const response = await fetch(`https://api.zhuji.com/api/v1/users?page=${page}&size=${size}`, {
@@ -733,7 +732,7 @@ async function getUsers(page, size) {
 }
 ```
 
-### 9.3 Java (RestTemplate) 示例
+### 9.3 Java (RestTemplate) 示例 | Java (RestTemplate) Example
 ```java
 @RestController
 public class UserController {
@@ -761,20 +760,20 @@ public class UserController {
 
 ---
 
-## 附录
+## 附录 | Appendix
 
-### A. Postman 集合
-下载 Postman 集合：[zhuji-api.postman_collection.json](https://api.zhuji.com/docs/zhuji-api.postman_collection.json)
+### A. Postman 集合 | Postman Collection
+下载 Postman 集合：| Download Postman Collection: [zhuji-api.postman_collection.json](https://api.zhuji.com/docs/zhuji-api.postman_collection.json)
 
-### B. OpenAPI (Swagger) 文档
+### B. OpenAPI (Swagger) 文档 | OpenAPI (Swagger) Documentation
 访问 Swagger UI: `https://api.zhuji.com/swagger-ui.html`
 
-### C. 参考文档
+### C. 参考文档 | References
 - [RFC 7519 - JWT](https://tools.ieft.org/html/rfc7519)
 - [OAuth 2.0](https://oauth.net/2/)
 
 ---
 
-**文档版本**: v1.0  
-**最后更新**: 2026-05-20  
-**维护者**: 筑基架构团队
+**文档版本 | Document Version**: v1.0  
+**最后更新 | Last Updated**: 2026-05-20  
+**维护者 | Maintainers**: 筑基架构团队 | Zhuji Architecture Team
