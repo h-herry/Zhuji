@@ -22,4 +22,6 @@ public interface UserOrgRelationMapper extends BaseMapper<UserOrgRelation> {
 
     @Select("SELECT org_id FROM sys_user_org_relation WHERE user_id = #{userId} AND deleted = 0")
     List<Long> selectOrgIdsByUserId(@Param("userId") Long userId);
+
+    void batchInsert(@Param("list") List<UserOrgRelation> list);
 }

@@ -22,4 +22,6 @@ public interface UserRoleRelationMapper extends BaseMapper<UserRoleRelation> {
 
     @Select("SELECT role_id FROM sys_user_role_relation WHERE user_id = #{userId} AND deleted = 0")
     List<Long> selectRoleIdsByUserId(@Param("userId") Long userId);
+
+    void batchInsert(@Param("list") List<UserRoleRelation> list);
 }

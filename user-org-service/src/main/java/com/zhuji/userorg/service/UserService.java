@@ -14,7 +14,10 @@ import com.zhuji.userorg.entity.User;
 import com.zhuji.userorg.entity.UserRole;
 import com.zhuji.userorg.mapper.UserMapper;
 import com.zhuji.userorg.mapper.UserRoleMapper;
+import com.zhuji.userorg.security.PasswordExpiryService;
+import com.zhuji.userorg.security.PasswordHistoryService;
 import com.zhuji.userorg.security.PasswordPolicyValidator;
+import com.zhuji.userorg.security.TokenBlacklistService;
 import com.zhuji.userorg.security.UserLockService;
 import com.zhuji.userorg.vo.UserVO;
 import org.springframework.cache.annotation.CacheEvict;
@@ -24,6 +27,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -38,9 +42,12 @@ public class UserService extends ServiceImpl<UserMapper, User> {
     private final JwtService jwtService;
     private final PasswordPolicyValidator passwordPolicyValidator;
     private final UserLockService userLockService;
+    private final PasswordExpiryService passwordExpiryService;
+    private final PasswordHistoryService passwordHistoryService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     private static final String TOKEN_PREFIX = "auth:token:";
-    private static final long TOKEN_EXPIRATION = 86400;
+    private static final String REFRESH_TOKEN_PREFIX = "auth:refresh:";
 
     public UserService(PasswordEncoder passwordEncoder,
                        UserRoleMapper userRoleMapper,
@@ -48,7 +55,10 @@ public class UserService extends ServiceImpl<UserMapper, User> {
                        RedisTemplate<String, Object> redisTemplate,
                        JwtService jwtService,
                        PasswordPolicyValidator passwordPolicyValidator,
-                       UserLockService userLockService) {
+                       UserLockService userLockService,
+                       PasswordExpiryService passwordExpiryService,
+                       PasswordHistoryService passwordHistoryService,
+                       TokenBlacklistService tokenBlacklistService) {
         this.passwordEncoder = passwordEncoder;
         this.userRoleMapper = userRoleMapper;
         this.permissionService = permissionService;
@@ -56,6 +66,9 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         this.jwtService = jwtService;
         this.passwordPolicyValidator = passwordPolicyValidator;
         this.userLockService = userLockService;
+        this.passwordExpiryService = passwordExpiryService;
+        this.passwordHistoryService = passwordHistoryService;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Transactional
@@ -87,8 +100,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
                 .phone(request.getPhone())
                 .orgId(request.getOrgId())
                 .status(1)
+                .passwordUpdateTime(LocalDateTime.now())
                 .build();
         save(user);
+
+        passwordHistoryService.savePasswordHistory(user.getId(), user.getPassword());
 
         return convertToVO(user);
     }
@@ -117,31 +133,131 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             throw new BusinessException(403, "用户已被禁用");
         }
 
+        passwordExpiryService.checkPasswordExpiry(user);
+
+        user.setLastLoginTime(LocalDateTime.now());
+        updateById(user);
+
         List<Permission> permissions = permissionService.listByUserId(user.getId());
         List<String> permissionCodes = permissions.stream()
                 .map(Permission::getPermissionCode)
                 .collect(Collectors.toList());
 
-        String token = jwtService.generateToken(user.getUsername(), permissionCodes);
+        String accessToken = jwtService.generateAccessToken(user.getUsername(), permissionCodes);
+        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
 
         redisTemplate.opsForValue().set(
             TOKEN_PREFIX + user.getId(),
-            token,
-            TOKEN_EXPIRATION,
+            accessToken,
+            jwtService.getAccessTokenExpiration(),
+            TimeUnit.SECONDS
+        );
+
+        redisTemplate.opsForValue().set(
+            REFRESH_TOKEN_PREFIX + user.getId(),
+            refreshToken,
+            jwtService.getRefreshTokenExpiration(),
+            TimeUnit.SECONDS
+        );
+
+        Integer expiryWarning = passwordExpiryService.getPasswordExpiryWarning(user);
+
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .tokenType("Bearer")
+                .expiresIn(jwtService.getAccessTokenExpiration())
+                .passwordExpiryWarning(
+                    expiryWarning != null
+                        ? I18nMessageUtil.getMessage("user.password.expiry.warning", expiryWarning)
+                        : null
+                )
+                .build();
+    }
+
+    public LoginResponse refreshToken(String refreshToken) {
+        if (!jwtService.validateToken(refreshToken)) {
+            throw new BusinessException(401, I18nMessageUtil.getMessage("token.invalid"));
+        }
+
+        String tokenType = jwtService.getTokenType(refreshToken);
+        if (!"refresh".equals(tokenType)) {
+            throw new BusinessException(401, I18nMessageUtil.getMessage("token.not.refresh"));
+        }
+
+        String username = jwtService.getUsernameFromToken(refreshToken);
+        User user = lambdaQuery()
+                .eq(User::getUsername, username)
+                .one();
+
+        if (user == null || user.getStatus() != 1) {
+            throw new BusinessException(401, I18nMessageUtil.getMessage("user.not.found.or.disabled"));
+        }
+
+        String storedRefreshToken = (String) redisTemplate.opsForValue().get(REFRESH_TOKEN_PREFIX + user.getId());
+
+        if (storedRefreshToken == null || !storedRefreshToken.equals(refreshToken)) {
+            throw new BusinessException(401, I18nMessageUtil.getMessage("token.expired"));
+        }
+
+        List<Permission> permissions = permissionService.listByUserId(user.getId());
+        List<String> permissionCodes = permissions.stream()
+                .map(Permission::getPermissionCode)
+                .collect(Collectors.toList());
+
+        String newAccessToken = jwtService.generateAccessToken(user.getUsername(), permissionCodes);
+
+        redisTemplate.opsForValue().set(
+            TOKEN_PREFIX + user.getId(),
+            newAccessToken,
+            jwtService.getAccessTokenExpiration(),
             TimeUnit.SECONDS
         );
 
         return LoginResponse.builder()
-                .token(token)
+                .accessToken(newAccessToken)
+                .refreshToken(refreshToken)
                 .userId(user.getId())
                 .username(user.getUsername())
                 .tokenType("Bearer")
-                .expiresIn(TOKEN_EXPIRATION)
+                .expiresIn(jwtService.getAccessTokenExpiration())
                 .build();
     }
 
     public void logout(Long userId) {
-        redisTemplate.delete(TOKEN_PREFIX + userId);
+        String token = (String) redisTemplate.opsForValue().get(TOKEN_PREFIX + userId);
+
+        if (token != null) {
+            tokenBlacklistService.addToBlacklist(token);
+
+            redisTemplate.delete(TOKEN_PREFIX + userId);
+            redisTemplate.delete(REFRESH_TOKEN_PREFIX + userId);
+        }
+    }
+
+    @Transactional
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException(404, I18nMessageUtil.getMessage("user.not.found"));
+        }
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BusinessException(400, I18nMessageUtil.getMessage("user.password.old.incorrect"));
+        }
+
+        passwordPolicyValidator.validatePassword(newPassword);
+
+        passwordHistoryService.validatePasswordNotInHistory(userId, newPassword);
+
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedPassword);
+        user.setPasswordUpdateTime(LocalDateTime.now());
+        updateById(user);
+
+        passwordHistoryService.savePasswordHistory(userId, encodedPassword);
     }
 
     @Cacheable(value = "user", key = "#id")

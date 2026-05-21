@@ -1,21 +1,26 @@
 package com.zhuji.userorg.dto;
 
 public class LoginResponse {
-    private String token;
+    private String accessToken;
+    private String refreshToken;
     private Long userId;
     private String username;
     private String tokenType;
     private Long expiresIn;
+    private String passwordExpiryWarning;
 
     public LoginResponse() {
     }
 
-    public LoginResponse(String token, Long userId, String username, String tokenType, Long expiresIn) {
-        this.token = token;
+    public LoginResponse(String accessToken, String refreshToken, Long userId, String username,
+                       String tokenType, Long expiresIn, String passwordExpiryWarning) {
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
         this.userId = userId;
         this.username = username;
         this.tokenType = tokenType;
         this.expiresIn = expiresIn;
+        this.passwordExpiryWarning = passwordExpiryWarning;
     }
 
     public static Builder builder() {
@@ -23,14 +28,21 @@ public class LoginResponse {
     }
 
     public static class Builder {
-        private String token;
+        private String accessToken;
+        private String refreshToken;
         private Long userId;
         private String username;
         private String tokenType;
         private Long expiresIn;
+        private String passwordExpiryWarning;
 
-        public Builder token(String token) {
-            this.token = token;
+        public Builder accessToken(String accessToken) {
+            this.accessToken = accessToken;
+            return this;
+        }
+
+        public Builder refreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
             return this;
         }
 
@@ -54,17 +66,30 @@ public class LoginResponse {
             return this;
         }
 
+        public Builder passwordExpiryWarning(String passwordExpiryWarning) {
+            this.passwordExpiryWarning = passwordExpiryWarning;
+            return this;
+        }
+
         public LoginResponse build() {
-            return new LoginResponse(token, userId, username, tokenType, expiresIn);
+            return new LoginResponse(accessToken, refreshToken, userId, username, tokenType, expiresIn, passwordExpiryWarning);
         }
     }
 
-    public String getToken() {
-        return token;
+    public String getAccessToken() {
+        return accessToken;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
     public Long getUserId() {
@@ -97,5 +122,13 @@ public class LoginResponse {
 
     public void setExpiresIn(Long expiresIn) {
         this.expiresIn = expiresIn;
+    }
+
+    public String getPasswordExpiryWarning() {
+        return passwordExpiryWarning;
+    }
+
+    public void setPasswordExpiryWarning(String passwordExpiryWarning) {
+        this.passwordExpiryWarning = passwordExpiryWarning;
     }
 }

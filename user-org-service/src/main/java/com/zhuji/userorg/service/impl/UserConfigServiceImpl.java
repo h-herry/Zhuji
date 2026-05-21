@@ -7,7 +7,9 @@ import com.zhuji.common.i18n.util.I18nMessageUtil;
 import com.zhuji.userorg.config.validator.ConfigValidator;
 import com.zhuji.userorg.entity.*;
 import com.zhuji.userorg.event.ConfigChangeEvent;
+import com.zhuji.userorg.event.ConfigChangePublisher;
 import com.zhuji.userorg.mapper.*;
+import com.zhuji.userorg.service.ConfigHistoryService;
 import com.zhuji.userorg.service.UserConfigService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -20,6 +22,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class UserConfigServiceImpl implements UserConfigService {
@@ -31,6 +35,8 @@ public class UserConfigServiceImpl implements UserConfigService {
     private final OrgUnitMapper orgUnitMapper;
     private final List<ConfigValidator> configValidators;
     private final ApplicationEventPublisher eventPublisher;
+    private final ConfigHistoryService configHistoryService;
+    private final ConfigChangePublisher configChangePublisher;
 
     public UserConfigServiceImpl(UserConfigMapper userConfigMapper,
                                UserRoleRelationMapper userRoleRelationMapper,
@@ -38,7 +44,9 @@ public class UserConfigServiceImpl implements UserConfigService {
                                RoleMapper roleMapper,
                                OrgUnitMapper orgUnitMapper,
                                List<ConfigValidator> configValidators,
-                               ApplicationEventPublisher eventPublisher) {
+                               ApplicationEventPublisher eventPublisher,
+                               ConfigHistoryService configHistoryService,
+                               ConfigChangePublisher configChangePublisher) {
         this.userConfigMapper = userConfigMapper;
         this.userRoleRelationMapper = userRoleRelationMapper;
         this.userOrgRelationMapper = userOrgRelationMapper;
@@ -46,6 +54,8 @@ public class UserConfigServiceImpl implements UserConfigService {
         this.orgUnitMapper = orgUnitMapper;
         this.configValidators = configValidators;
         this.eventPublisher = eventPublisher;
+        this.configHistoryService = configHistoryService;
+        this.configChangePublisher = configChangePublisher;
     }
 
     @Override
@@ -84,6 +94,7 @@ public class UserConfigServiceImpl implements UserConfigService {
 
     @Override
     @CacheEvict(value = "user-config", key = "#config.userId", allEntries = true)
+    @Transactional
     public UserConfig createUserConfig(UserConfig config) {
         validateConfig(config.getConfigKey(), config.getConfigValue());
         UserConfig existing = userConfigMapper.selectByUserIdAndKey(config.getUserId(), config.getConfigKey());
@@ -91,12 +102,26 @@ public class UserConfigServiceImpl implements UserConfigService {
             throw new BusinessException(400, I18nMessageUtil.getMessage("validation.unique", "配置键"));
         }
         userConfigMapper.insert(config);
+
+        configHistoryService.saveConfigHistory(
+            config.getId(),
+            config.getUserId(),
+            config.getConfigKey(),
+            config.getConfigValue(),
+            config.getConfigType(),
+            "CREATE",
+            null
+        );
+
         eventPublisher.publishEvent(new ConfigChangeEvent(this, config.getConfigKey()));
+        configChangePublisher.publishConfigChange(config.getUserId(), config.getConfigKey(), "CREATE");
+
         return config;
     }
 
     @Override
     @CacheEvict(value = "user-config", key = "#userId", allEntries = true)
+    @Transactional
     public UserConfig updateUserConfig(Long id, UserConfig config) {
         validateConfig(config.getConfigKey(), config.getConfigValue());
         UserConfig existing = userConfigMapper.selectById(id);
@@ -114,19 +139,45 @@ public class UserConfigServiceImpl implements UserConfigService {
         config.setId(id);
         config.setUpdateTime(LocalDateTime.now());
         userConfigMapper.updateById(config);
+
+        configHistoryService.saveConfigHistory(
+            config.getId(),
+            config.getUserId(),
+            config.getConfigKey(),
+            config.getConfigValue(),
+            config.getConfigType(),
+            "UPDATE",
+            null
+        );
+
         eventPublisher.publishEvent(new ConfigChangeEvent(this, config.getConfigKey()));
+        configChangePublisher.publishConfigChange(config.getUserId(), config.getConfigKey(), "UPDATE");
+
         return config;
     }
 
     @Override
     @CacheEvict(value = "user-config", allEntries = true)
+    @Transactional
     public void deleteUserConfig(Long id) {
         UserConfig config = userConfigMapper.selectById(id);
         if (config == null) {
             throw new BusinessException(404, I18nMessageUtil.getMessage("user.config.not.found"));
         }
         userConfigMapper.deleteById(id);
+
+        configHistoryService.saveConfigHistory(
+            config.getId(),
+            config.getUserId(),
+            config.getConfigKey(),
+            config.getConfigValue(),
+            config.getConfigType(),
+            "DELETE",
+            null
+        );
+
         eventPublisher.publishEvent(new ConfigChangeEvent(this, config.getConfigKey()));
+        configChangePublisher.publishConfigChange(config.getUserId(), config.getConfigKey(), "DELETE");
     }
 
     private void validateConfig(String configKey, String configValue) {
@@ -140,46 +191,101 @@ public class UserConfigServiceImpl implements UserConfigService {
     @Override
     @Transactional
     public void batchAssignRoles(Long userId, List<Long> roleIds, String isPrimary) {
-        LambdaQueryWrapper<UserRoleRelation> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserRoleRelation::getUserId, userId);
-        userRoleRelationMapper.delete(queryWrapper);
+        List<UserRoleRelation> existingRelations = userRoleRelationMapper.selectList(
+            new LambdaQueryWrapper<UserRoleRelation>()
+                .eq(UserRoleRelation::getUserId, userId)
+        );
 
-        for (int i = 0; i < roleIds.size(); i++) {
-            Long roleId = roleIds.get(i);
-            Role role = roleMapper.selectById(roleId);
-            if (role == null) {
-                throw new BusinessException(404, I18nMessageUtil.getMessage("role.not.found"));
+        Set<Long> existingRoleIds = existingRelations.stream()
+            .map(UserRoleRelation::getRoleId)
+            .collect(Collectors.toSet());
+
+        List<Long> rolesToAdd = roleIds.stream()
+            .filter(roleId -> !existingRoleIds.contains(roleId))
+            .collect(Collectors.toList());
+
+        List<Long> rolesToRemove = existingRoleIds.stream()
+            .filter(roleId -> !roleIds.contains(roleId))
+            .collect(Collectors.toList());
+
+        if (!rolesToRemove.isEmpty()) {
+            userRoleRelationMapper.delete(
+                new LambdaQueryWrapper<UserRoleRelation>()
+                    .eq(UserRoleRelation::getUserId, userId)
+                    .in(UserRoleRelation::getRoleId, rolesToRemove)
+            );
+        }
+
+        if (!rolesToAdd.isEmpty()) {
+            List<UserRoleRelation> newRelations = new ArrayList<>();
+            for (int i = 0; i < rolesToAdd.size(); i++) {
+                Long roleId = rolesToAdd.get(i);
+
+                Role role = roleMapper.selectById(roleId);
+                if (role == null) {
+                    throw new BusinessException(404, I18nMessageUtil.getMessage("role.not.found"));
+                }
+
+                UserRoleRelation relation = new UserRoleRelation();
+                relation.setUserId(userId);
+                relation.setRoleId(roleId);
+                relation.setIsPrimary(("1".equals(isPrimary) && i == 0) ? "1" : "0");
+                relation.setCreateTime(LocalDateTime.now());
+                newRelations.add(relation);
             }
 
-            UserRoleRelation relation = new UserRoleRelation();
-            relation.setUserId(userId);
-            relation.setRoleId(roleId);
-            relation.setIsPrimary((i == 0 && "1".equals(isPrimary)) ? "1" : "0");
-            relation.setCreateTime(LocalDateTime.now());
-            userRoleRelationMapper.insert(relation);
+            userRoleRelationMapper.batchInsert(newRelations);
         }
     }
 
     @Override
     @Transactional
     public void batchAssignOrgs(Long userId, List<Long> orgIds, String isPrimary) {
-        LambdaQueryWrapper<UserOrgRelation> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserOrgRelation::getUserId, userId);
-        userOrgRelationMapper.delete(queryWrapper);
+        List<UserOrgRelation> existingRelations = userOrgRelationMapper.selectList(
+            new LambdaQueryWrapper<UserOrgRelation>()
+                .eq(UserOrgRelation::getUserId, userId)
+        );
 
-        for (int i = 0; i < orgIds.size(); i++) {
-            Long orgId = orgIds.get(i);
-            OrgUnit org = orgUnitMapper.selectById(orgId);
-            if (org == null) {
-                throw new BusinessException(404, I18nMessageUtil.getMessage("org.not.found"));
+        Set<Long> existingOrgIds = existingRelations.stream()
+            .map(UserOrgRelation::getOrgId)
+            .collect(Collectors.toSet());
+
+        List<Long> orgsToAdd = orgIds.stream()
+            .filter(orgId -> !existingOrgIds.contains(orgId))
+            .collect(Collectors.toList());
+
+        List<Long> orgsToRemove = existingOrgIds.stream()
+            .filter(orgId -> !orgIds.contains(orgId))
+            .collect(Collectors.toList());
+
+        if (!orgsToRemove.isEmpty()) {
+            userOrgRelationMapper.delete(
+                new LambdaQueryWrapper<UserOrgRelation>()
+                    .eq(UserOrgRelation::getUserId, userId)
+                    .in(UserOrgRelation::getOrgId, orgsToRemove)
+            );
+        }
+
+        if (!orgsToAdd.isEmpty()) {
+            List<UserOrgRelation> newRelations = new ArrayList<>();
+            for (int i = 0; i < orgsToAdd.size(); i++) {
+                Long orgId = orgsToAdd.get(i);
+
+                OrgUnit org = orgUnitMapper.selectById(orgId);
+                if (org == null) {
+                    throw new BusinessException(404, I18nMessageUtil.getMessage("org.not.found"));
+                }
+
+                UserOrgRelation relation = new UserOrgRelation();
+                relation.setUserId(userId);
+                relation.setOrgId(orgId);
+                relation.setRelationType("MEMBER");
+                relation.setIsPrimary(("1".equals(isPrimary) && i == 0) ? "1" : "0");
+                relation.setCreateTime(LocalDateTime.now());
+                newRelations.add(relation);
             }
 
-            UserOrgRelation relation = new UserOrgRelation();
-            relation.setUserId(userId);
-            relation.setOrgId(orgId);
-            relation.setIsPrimary((i == 0 && "1".equals(isPrimary)) ? "1" : "0");
-            relation.setCreateTime(LocalDateTime.now());
-            userOrgRelationMapper.insert(relation);
+            userOrgRelationMapper.batchInsert(newRelations);
         }
     }
 

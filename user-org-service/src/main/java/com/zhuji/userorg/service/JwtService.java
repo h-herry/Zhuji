@@ -16,27 +16,42 @@ public class JwtService {
     @Value("${jwt.secret:ZhujiSecretKeyForJWTTokenGeneration2024VeryLongSecretKey}")
     private String jwtSecret;
 
-    @Value("${jwt.expiration:86400000}")
-    private long jwtExpiration;
+    @Value("${jwt.access-token-expiration:3600000}")
+    private long accessTokenExpiration;
 
-    public String generateToken(String username, List<String> permissions) {
+    @Value("${jwt.refresh-token-expiration:604800000}")
+    private long refreshTokenExpiration;
+
+    public String generateAccessToken(String username, List<String> permissions) {
+        return generateToken(username, permissions, accessTokenExpiration, "access");
+    }
+
+    public String generateRefreshToken(String username) {
+        return generateToken(username, null, refreshTokenExpiration, "refresh");
+    }
+
+    private String generateToken(String username, List<String> permissions,
+                                  long expiration, String tokenType) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpiration);
+        Date expiryDate = new Date(now.getTime() + expiration);
 
         SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(username)
-                .claim("permissions", permissions)
+                .claim("type", tokenType)
                 .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key)
-                .compact();
+                .expiration(expiryDate);
+
+        if (permissions != null) {
+            builder.claim("permissions", permissions);
+        }
+
+        return builder.signWith(key).compact();
     }
 
     public String getUsernameFromToken(String token) {
         SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
@@ -48,13 +63,22 @@ public class JwtService {
     @SuppressWarnings("unchecked")
     public List<String> getPermissionsFromToken(String token) {
         SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-
         return Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload()
                 .get("permissions", List.class);
+    }
+
+    public String getTokenType(String token) {
+        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("type", String.class);
     }
 
     public boolean validateToken(String token) {
@@ -83,5 +107,13 @@ public class JwtService {
         } catch (Exception e) {
             return true;
         }
+    }
+
+    public long getAccessTokenExpiration() {
+        return accessTokenExpiration / 1000;
+    }
+
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration / 1000;
     }
 }

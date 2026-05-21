@@ -13,6 +13,8 @@ public class User {
     private String phone;
     private Integer status;
     private Long orgId;
+    private LocalDateTime passwordUpdateTime;
+    private LocalDateTime lastLoginTime;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
@@ -26,7 +28,7 @@ public class User {
     public User() {
     }
 
-    public User(Long id, String username, String password, String email, String phone, Integer status, Long orgId, LocalDateTime createTime, LocalDateTime updateTime, Integer deleted) {
+    public User(Long id, String username, String password, String email, String phone, Integer status, Long orgId, LocalDateTime passwordUpdateTime, LocalDateTime lastLoginTime, LocalDateTime createTime, LocalDateTime updateTime, Integer deleted) {
         this.id = id;
         this.username = username;
         this.password = password;
@@ -34,6 +36,8 @@ public class User {
         this.phone = phone;
         this.status = status;
         this.orgId = orgId;
+        this.passwordUpdateTime = passwordUpdateTime;
+        this.lastLoginTime = lastLoginTime;
         this.createTime = createTime;
         this.updateTime = updateTime;
         this.deleted = deleted;
@@ -51,6 +55,8 @@ public class User {
         private String phone;
         private Integer status;
         private Long orgId;
+        private LocalDateTime passwordUpdateTime;
+        private LocalDateTime lastLoginTime;
         private LocalDateTime createTime;
         private LocalDateTime updateTime;
         private Integer deleted;
@@ -90,6 +96,16 @@ public class User {
             return this;
         }
 
+        public Builder passwordUpdateTime(LocalDateTime passwordUpdateTime) {
+            this.passwordUpdateTime = passwordUpdateTime;
+            return this;
+        }
+
+        public Builder lastLoginTime(LocalDateTime lastLoginTime) {
+            this.lastLoginTime = lastLoginTime;
+            return this;
+        }
+
         public Builder createTime(LocalDateTime createTime) {
             this.createTime = createTime;
             return this;
@@ -106,7 +122,7 @@ public class User {
         }
 
         public User build() {
-            return new User(id, username, password, email, phone, status, orgId, createTime, updateTime, deleted);
+            return new User(id, username, password, email, phone, status, orgId, passwordUpdateTime, lastLoginTime, createTime, updateTime, deleted);
         }
     }
 
@@ -164,6 +180,22 @@ public class User {
 
     public void setOrgId(Long orgId) {
         this.orgId = orgId;
+    }
+
+    public LocalDateTime getPasswordUpdateTime() {
+        return passwordUpdateTime;
+    }
+
+    public void setPasswordUpdateTime(LocalDateTime passwordUpdateTime) {
+        this.passwordUpdateTime = passwordUpdateTime;
+    }
+
+    public LocalDateTime getLastLoginTime() {
+        return lastLoginTime;
+    }
+
+    public void setLastLoginTime(LocalDateTime lastLoginTime) {
+        this.lastLoginTime = lastLoginTime;
     }
 
     public LocalDateTime getCreateTime() {
