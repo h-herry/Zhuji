@@ -1,9 +1,14 @@
 package com.zhuji.userorg.service.impl;
 
+import com.zhuji.common.core.exception.BusinessException;
+import com.zhuji.common.i18n.util.I18nMessageUtil;
 import com.zhuji.userorg.entity.ConfigHistory;
+import com.zhuji.userorg.entity.UserConfig;
 import com.zhuji.userorg.mapper.ConfigHistoryMapper;
+import com.zhuji.userorg.mapper.UserConfigMapper;
 import com.zhuji.userorg.service.ConfigHistoryService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -11,9 +16,12 @@ import java.util.List;
 public class ConfigHistoryServiceImpl implements ConfigHistoryService {
 
     private final ConfigHistoryMapper configHistoryMapper;
+    private final UserConfigMapper userConfigMapper;
 
-    public ConfigHistoryServiceImpl(ConfigHistoryMapper configHistoryMapper) {
+    public ConfigHistoryServiceImpl(ConfigHistoryMapper configHistoryMapper,
+                                   UserConfigMapper userConfigMapper) {
         this.configHistoryMapper = configHistoryMapper;
+        this.userConfigMapper = userConfigMapper;
     }
 
     @Override
@@ -27,7 +35,13 @@ public class ConfigHistoryServiceImpl implements ConfigHistoryService {
         history.setConfigType(configType);
         history.setOperation(operation);
         history.setOperator(operator);
+        history.setVersion(getNextVersion(configId));
         configHistoryMapper.insert(history);
+    }
+
+    private Integer getNextVersion(Long configId) {
+        Integer maxVersion = configHistoryMapper.selectMaxVersionByConfigId(configId);
+        return maxVersion != null ? maxVersion + 1 : 1;
     }
 
     @Override
@@ -38,5 +52,37 @@ public class ConfigHistoryServiceImpl implements ConfigHistoryService {
     @Override
     public List<ConfigHistory> getConfigHistoryByUserId(Long userId) {
         return configHistoryMapper.selectByUserId(userId);
+    }
+
+    @Override
+    public ConfigHistory getConfigHistoryByVersion(Long configId, Integer version) {
+        return configHistoryMapper.selectByConfigIdAndVersion(configId, version);
+    }
+
+    @Override
+    public List<ConfigHistory> getConfigHistoryByKey(Long userId, String configKey) {
+        return configHistoryMapper.selectByUserIdAndConfigKey(userId, configKey);
+    }
+
+    @Override
+    @Transactional
+    public Object rollbackToVersion(Long configId, Integer version) {
+        ConfigHistory targetVersion = configHistoryMapper.selectByConfigIdAndVersion(configId, version);
+        if (targetVersion == null) {
+            throw new BusinessException(404, I18nMessageUtil.getMessage("config.version.not.found"));
+        }
+
+        UserConfig config = userConfigMapper.selectById(configId);
+        if (config == null) {
+            throw new BusinessException(404, I18nMessageUtil.getMessage("config.not.found"));
+        }
+
+        config.setConfigValue(targetVersion.getConfigValue());
+        userConfigMapper.updateById(config);
+
+        saveConfigHistory(configId, config.getUserId(), config.getConfigKey(),
+                          config.getConfigValue(), config.getConfigType(), "ROLLBACK", null);
+
+        return config;
     }
 }

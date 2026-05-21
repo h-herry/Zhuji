@@ -13,4 +13,10 @@ public interface ConfigHistoryMapper extends BaseMapper<ConfigHistory> {
     List<ConfigHistory> selectByConfigId(@Param("configId") Long configId);
 
     List<ConfigHistory> selectByUserId(@Param("userId") Long userId);
+
+    ConfigHistory selectByConfigIdAndVersion(@Param("configId") Long configId, @Param("version") Integer version);
+
+    List<ConfigHistory> selectByUserIdAndConfigKey(@Param("userId") Long userId, @Param("configKey") String configKey);
+
+    Integer selectMaxVersionByConfigId(@Param("configId") Long configId);
 }

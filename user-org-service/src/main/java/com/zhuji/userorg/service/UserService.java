@@ -363,9 +363,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
                     return ur;
                 })
                 .collect(Collectors.toList());
-            for (UserRole ur : userRoles) {
-                userRoleMapper.insert(ur);
-            }
+            userRoleMapper.batchInsertUserRoles(userRoles);
         }
     }
 

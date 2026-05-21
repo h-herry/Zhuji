@@ -9,6 +9,7 @@ import com.zhuji.userorg.entity.*;
 import com.zhuji.userorg.event.ConfigChangeEvent;
 import com.zhuji.userorg.event.ConfigChangePublisher;
 import com.zhuji.userorg.mapper.*;
+import com.zhuji.userorg.service.ConfigEncryptionService;
 import com.zhuji.userorg.service.ConfigHistoryService;
 import com.zhuji.userorg.service.UserConfigService;
 import org.springframework.cache.annotation.CacheEvict;
@@ -37,6 +38,7 @@ public class UserConfigServiceImpl implements UserConfigService {
     private final ApplicationEventPublisher eventPublisher;
     private final ConfigHistoryService configHistoryService;
     private final ConfigChangePublisher configChangePublisher;
+    private final ConfigEncryptionService configEncryptionService;
 
     public UserConfigServiceImpl(UserConfigMapper userConfigMapper,
                                UserRoleRelationMapper userRoleRelationMapper,
@@ -46,7 +48,8 @@ public class UserConfigServiceImpl implements UserConfigService {
                                List<ConfigValidator> configValidators,
                                ApplicationEventPublisher eventPublisher,
                                ConfigHistoryService configHistoryService,
-                               ConfigChangePublisher configChangePublisher) {
+                               ConfigChangePublisher configChangePublisher,
+                               ConfigEncryptionService configEncryptionService) {
         this.userConfigMapper = userConfigMapper;
         this.userRoleRelationMapper = userRoleRelationMapper;
         this.userOrgRelationMapper = userOrgRelationMapper;
@@ -56,6 +59,7 @@ public class UserConfigServiceImpl implements UserConfigService {
         this.eventPublisher = eventPublisher;
         this.configHistoryService = configHistoryService;
         this.configChangePublisher = configChangePublisher;
+        this.configEncryptionService = configEncryptionService;
     }
 
     @Override
@@ -89,7 +93,16 @@ public class UserConfigServiceImpl implements UserConfigService {
     @Override
     @Cacheable(value = "user-config", key = "#userId + ':' + #configKey")
     public UserConfig getUserConfigByKey(Long userId, String configKey) {
-        return userConfigMapper.selectByUserIdAndKey(userId, configKey);
+        UserConfig config = userConfigMapper.selectByUserIdAndKey(userId, configKey);
+
+        if (config != null && configEncryptionService.isSensitive(configKey)) {
+            try {
+                config.setConfigValue(configEncryptionService.decrypt(config.getConfigValue()));
+            } catch (Exception e) {
+            }
+        }
+
+        return config;
     }
 
     @Override
@@ -101,6 +114,11 @@ public class UserConfigServiceImpl implements UserConfigService {
         if (existing != null) {
             throw new BusinessException(400, I18nMessageUtil.getMessage("validation.unique", "配置键"));
         }
+
+        if (configEncryptionService.isSensitive(config.getConfigKey())) {
+            config.setConfigValue(configEncryptionService.encrypt(config.getConfigValue()));
+        }
+
         userConfigMapper.insert(config);
 
         configHistoryService.saveConfigHistory(
@@ -134,6 +152,10 @@ public class UserConfigServiceImpl implements UserConfigService {
             if (duplicate != null) {
                 throw new BusinessException(400, I18nMessageUtil.getMessage("validation.unique", "配置键"));
             }
+        }
+
+        if (configEncryptionService.isSensitive(config.getConfigKey())) {
+            config.setConfigValue(configEncryptionService.encrypt(config.getConfigValue()));
         }
 
         config.setId(id);
@@ -301,21 +323,32 @@ public class UserConfigServiceImpl implements UserConfigService {
 
     @Override
     public List<Map<String, Object>> getUserRoles(Long userId) {
-        List<Long> roleIds = userRoleRelationMapper.selectRoleIdsByUserId(userId);
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<UserRoleRelation> relations = userRoleRelationMapper.selectByUserId(userId);
 
-        for (Long roleId : roleIds) {
-            Role role = roleMapper.selectById(roleId);
+        if (relations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> roleIds = relations.stream()
+            .map(UserRoleRelation::getRoleId)
+            .collect(Collectors.toSet());
+        List<Role> roles = roleMapper.selectBatchIds(roleIds);
+
+        Map<Long, Role> roleMap = roles.stream()
+            .collect(Collectors.toMap(Role::getId, r -> r));
+
+        UserRoleRelation primaryRelation = userRoleRelationMapper.selectPrimaryByUserId(userId);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (UserRoleRelation relation : relations) {
+            Role role = roleMap.get(relation.getRoleId());
             if (role != null) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", role.getId());
                 map.put("roleCode", role.getRoleCode());
                 map.put("roleName", role.getRoleName());
                 map.put("description", role.getDescription());
-
-                UserRoleRelation relation = userRoleRelationMapper.selectPrimaryByUserId(userId);
-                map.put("isPrimary", relation != null && relation.getRoleId().equals(roleId) ? "1" : "0");
-
+                map.put("isPrimary", primaryRelation != null && primaryRelation.getRoleId().equals(role.getId()) ? "1" : "0");
                 result.add(map);
             }
         }
@@ -325,11 +358,25 @@ public class UserConfigServiceImpl implements UserConfigService {
 
     @Override
     public List<Map<String, Object>> getUserOrgs(Long userId) {
-        List<Long> orgIds = userOrgRelationMapper.selectOrgIdsByUserId(userId);
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<UserOrgRelation> relations = userOrgRelationMapper.selectByUserId(userId);
 
-        for (Long orgId : orgIds) {
-            OrgUnit org = orgUnitMapper.selectById(orgId);
+        if (relations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> orgIds = relations.stream()
+            .map(UserOrgRelation::getOrgId)
+            .collect(Collectors.toSet());
+        List<OrgUnit> orgs = orgUnitMapper.selectBatchIds(orgIds);
+
+        Map<Long, OrgUnit> orgMap = orgs.stream()
+            .collect(Collectors.toMap(OrgUnit::getId, o -> o));
+
+        UserOrgRelation primaryRelation = userOrgRelationMapper.selectPrimaryByUserId(userId);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (UserOrgRelation relation : relations) {
+            OrgUnit org = orgMap.get(relation.getOrgId());
             if (org != null) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("id", org.getId());
@@ -337,10 +384,7 @@ public class UserConfigServiceImpl implements UserConfigService {
                 map.put("fullName", org.getFullName());
                 map.put("shortName", org.getShortName());
                 map.put("orgType", org.getOrgType());
-
-                UserOrgRelation relation = userOrgRelationMapper.selectPrimaryByUserId(userId);
-                map.put("isPrimary", relation != null && relation.getOrgId().equals(orgId) ? "1" : "0");
-
+                map.put("isPrimary", primaryRelation != null && primaryRelation.getOrgId().equals(org.getId()) ? "1" : "0");
                 result.add(map);
             }
         }
@@ -369,28 +413,38 @@ public class UserConfigServiceImpl implements UserConfigService {
     @Override
     @Transactional
     public void setPrimaryRole(Long userId, Long roleId) {
-        List<UserRoleRelation> relations = userRoleRelationMapper.selectByUserId(userId);
-        for (UserRoleRelation relation : relations) {
-            if (relation.getRoleId().equals(roleId)) {
-                relation.setIsPrimary("1");
-            } else {
-                relation.setIsPrimary("0");
-            }
-            userRoleRelationMapper.updateById(relation);
+        Role role = roleMapper.selectById(roleId);
+        if (role == null) {
+            throw new BusinessException(404, I18nMessageUtil.getMessage("role.not.found"));
         }
+
+        List<UserRoleRelation> relations = userRoleRelationMapper.selectByUserId(userId);
+        boolean hasRole = relations.stream()
+            .anyMatch(r -> r.getRoleId().equals(roleId));
+
+        if (!hasRole) {
+            throw new BusinessException(400, "用户没有该角色");
+        }
+
+        userRoleRelationMapper.updatePrimaryByUserId(userId, roleId);
     }
 
     @Override
     @Transactional
     public void setPrimaryOrg(Long userId, Long orgId) {
-        List<UserOrgRelation> relations = userOrgRelationMapper.selectByUserId(userId);
-        for (UserOrgRelation relation : relations) {
-            if (relation.getOrgId().equals(orgId)) {
-                relation.setIsPrimary("1");
-            } else {
-                relation.setIsPrimary("0");
-            }
-            userOrgRelationMapper.updateById(relation);
+        OrgUnit org = orgUnitMapper.selectById(orgId);
+        if (org == null) {
+            throw new BusinessException(404, I18nMessageUtil.getMessage("org.not.found"));
         }
+
+        List<UserOrgRelation> relations = userOrgRelationMapper.selectByUserId(userId);
+        boolean hasOrg = relations.stream()
+            .anyMatch(r -> r.getOrgId().equals(orgId));
+
+        if (!hasOrg) {
+            throw new BusinessException(400, "用户不属于该组织");
+        }
+
+        userOrgRelationMapper.updatePrimaryByUserId(userId, orgId);
     }
 }

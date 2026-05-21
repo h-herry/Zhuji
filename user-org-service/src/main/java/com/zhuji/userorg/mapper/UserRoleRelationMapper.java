@@ -24,4 +24,6 @@ public interface UserRoleRelationMapper extends BaseMapper<UserRoleRelation> {
     List<Long> selectRoleIdsByUserId(@Param("userId") Long userId);
 
     void batchInsert(@Param("list") List<UserRoleRelation> list);
+
+    void updatePrimaryByUserId(@Param("userId") Long userId, @Param("roleId") Long roleId);
 }

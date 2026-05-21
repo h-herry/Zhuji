@@ -6,13 +6,29 @@
     <select id="selectByConfigId" resultType="com.zhuji.userorg.entity.ConfigHistory">
         SELECT * FROM sys_user_config_history
         WHERE config_id = #{configId}
-        ORDER BY create_time DESC
+        ORDER BY version DESC
     </select>
 
     <select id="selectByUserId" resultType="com.zhuji.userorg.entity.ConfigHistory">
         SELECT * FROM sys_user_config_history
         WHERE user_id = #{userId}
         ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByConfigIdAndVersion" resultType="com.zhuji.userorg.entity.ConfigHistory">
+        SELECT * FROM sys_user_config_history
+        WHERE config_id = #{configId} AND version = #{version}
+    </select>
+
+    <select id="selectByUserIdAndConfigKey" resultType="com.zhuji.userorg.entity.ConfigHistory">
+        SELECT * FROM sys_user_config_history
+        WHERE user_id = #{userId} AND config_key = #{configKey}
+        ORDER BY version DESC
+    </select>
+
+    <select id="selectMaxVersionByConfigId" resultType="Integer">
+        SELECT MAX(version) FROM sys_user_config_history
+        WHERE config_id = #{configId}
     </select>
 
 </mapper>

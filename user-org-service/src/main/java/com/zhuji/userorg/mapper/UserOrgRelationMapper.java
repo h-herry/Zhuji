@@ -24,4 +24,6 @@ public interface UserOrgRelationMapper extends BaseMapper<UserOrgRelation> {
     List<Long> selectOrgIdsByUserId(@Param("userId") Long userId);
 
     void batchInsert(@Param("list") List<UserOrgRelation> list);
+
+    void updatePrimaryByUserId(@Param("userId") Long userId, @Param("orgId") Long orgId);
 }

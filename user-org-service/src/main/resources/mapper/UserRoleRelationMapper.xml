@@ -12,4 +12,13 @@
         </foreach>
     </insert>
 
+    <update id="updatePrimaryByUserId">
+        UPDATE sys_user_role_relation
+        SET is_primary = CASE
+            WHEN role_id = #{roleId} THEN '1'
+            ELSE '0'
+        END
+        WHERE user_id = #{userId}
+    </update>
+
 </mapper>

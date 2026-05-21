@@ -15,6 +15,7 @@ public class ConfigHistory {
     private String configType;
     private String operation;
     private String operator;
+    private Integer version;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
@@ -81,6 +82,14 @@ public class ConfigHistory {
 
     public void setOperator(String operator) {
         this.operator = operator;
+    }
+
+    public Integer getVersion() {
+        return version;
+    }
+
+    public void setVersion(Integer version) {
+        this.version = version;
     }
 
     public LocalDateTime getCreateTime() {

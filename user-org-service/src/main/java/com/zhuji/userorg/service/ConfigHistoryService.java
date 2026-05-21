@@ -12,4 +12,10 @@ public interface ConfigHistoryService {
     List<ConfigHistory> getConfigHistory(Long configId);
 
     List<ConfigHistory> getConfigHistoryByUserId(Long userId);
+
+    ConfigHistory getConfigHistoryByVersion(Long configId, Integer version);
+
+    List<ConfigHistory> getConfigHistoryByKey(Long userId, String configKey);
+
+    Object rollbackToVersion(Long configId, Integer version);
 }
