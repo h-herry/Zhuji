@@ -282,7 +282,7 @@ public class SecurityConfig {
 ```
 
 ### 3.3 common-cache 模块
-**职责**: 封装 Redis 操作，提供缓存注解
+**职责**: 封装 Redis 操作，提供缓存注解，支持分布式锁
 
 **核心类**:
 
@@ -313,6 +313,180 @@ public class UserService {
     @CacheEvict(value = "user", key = "#user.id")
     public User updateUser(User user) {
         return userRepository.save(user);
+    }
+}
+```
+
+### 3.4 common-i18n 模块
+**职责**: 提供多语言支持，支持数据库消息存储和缓存
+
+**核心类**:
+
+*国际化配置*:
+```java
+@Configuration
+public class I18nConfig {
+    @Bean
+    public MessageSource messageSource() {
+        ReloadableResourceBundleMessageSource source = new ReloadableResourceBundleMessageSource();
+        source.setBasename("classpath:i18n/messages");
+        source.setDefaultEncoding("UTF-8");
+        return source;
+    }
+}
+```
+
+*消息工具类*:
+```java
+@Component
+public class I18nMessageUtil {
+    @Autowired
+    private MessageSource messageSource;
+    
+    public String getMessage(String code, Object... args) {
+        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+    }
+}
+```
+
+### 3.5 common-mq 模块
+**职责**: 封装消息队列操作，支持 RabbitMQ
+
+**核心类**:
+
+*消息发送者*:
+```java
+@Component
+public class RabbitMQSender {
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+    
+    public void send(String exchange, String routingKey, Object message) {
+        rabbitTemplate.convertAndSend(exchange, routingKey, message);
+    }
+}
+```
+
+*消息监听器*:
+```java
+@Component
+public class RabbitMQListener {
+    @RabbitListener(queues = "example.queue")
+    public void handleMessage(String message) {
+        // 处理消息
+    }
+}
+```
+
+### 3.6 common-task 模块
+**职责**: 提供定时任务支持，支持任务日志
+
+**核心类**:
+
+*定时任务配置*:
+```java
+@Configuration
+@EnableScheduling
+public class TaskConfig {
+    @Bean
+    public TaskScheduler taskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(5);
+        scheduler.setThreadNamePrefix("task-");
+        return scheduler;
+    }
+}
+```
+
+*定时任务示例*:
+```java
+@Component
+public class ExampleTask {
+    @Scheduled(cron = "0 0 * * * ?")
+    @ScheduledLog(description = "示例定时任务")
+    public void execute() {
+        // 任务逻辑
+    }
+}
+```
+
+### 3.7 common-monitor 模块
+**职责**: 提供监控支持，集成 Prometheus 和 Zipkin
+
+**核心类**:
+
+*监控配置*:
+```java
+@Configuration
+public class MonitorConfig {
+    @Bean
+    public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
+        return registry -> registry.config().commonTags("application", "zhuji");
+    }
+}
+```
+
+### 3.8 common-crypto 模块
+**职责**: 提供加密支持，集成 Jasypt
+
+**核心类**:
+
+*加密工具类*:
+```java
+@Component
+public class CryptoUtil {
+    @Autowired
+    private StringEncryptor stringEncryptor;
+    
+    public String encrypt(String plainText) {
+        return stringEncryptor.encrypt(plainText);
+    }
+    
+    public String decrypt(String encryptedText) {
+        return stringEncryptor.decrypt(encryptedText);
+    }
+}
+```
+
+### 3.9 common-export 模块
+**职责**: 提供导出支持，集成 EasyExcel
+
+**核心类**:
+
+*Excel导出工具*:
+```java
+@Component
+public class ExcelExportUtil {
+    public void export(HttpServletResponse response, List<?> data, Class<?> clazz, String fileName) {
+        // 使用 EasyExcel 导出
+    }
+}
+```
+
+### 3.10 common-audit 模块
+**职责**: 提供审计日志支持
+
+**核心类**:
+
+*审计日志注解*:
+```java
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface AuditLog {
+    String description();
+    String module() default "";
+}
+```
+
+*审计日志切面*:
+```java
+@Aspect
+@Component
+public class AuditLogAspect {
+    @Around("@annotation(auditLog)")
+    public Object audit(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
+        // 记录审计日志
+        return joinPoint.proceed();
     }
 }
 ```
@@ -818,6 +992,6 @@ public class IdempotentAspect {
 
 ---
 
-**文档版本**: v1.0  
-**最后更新**: 2026-05-20  
+**文档版本**: v1.1  
+**最后更新**: 2026-05-21  
 **维护者**: 筑基架构团队

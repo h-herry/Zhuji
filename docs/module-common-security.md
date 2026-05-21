@@ -10,6 +10,9 @@ common-security模块提供统一的安全认证和授权功能，包括JWT Toke
 - **认证过滤器**：JWT认证过滤器
 - **安全配置**：Spring Security配置基类
 - **用户信息工具**：当前登录用户信息获取
+- **密码策略校验**：密码复杂度校验、历史记录校验
+- **用户锁定机制**：登录失败次数限制、账户锁定
+- **Token黑名单**：注销Token管理
 
 ### 1.2 技术栈
 
@@ -113,6 +116,109 @@ public class SecurityConfig {
                 UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+}
+```
+
+### 2.4 PasswordPolicyValidator - 密码策略校验器
+
+```java
+public class PasswordPolicyValidator {
+    
+    private static final int MIN_LENGTH = 8;
+    private static final int MAX_LENGTH = 32;
+    
+    public void validatePassword(String password) {
+        // 长度校验
+        if (password.length() < MIN_LENGTH || password.length() > MAX_LENGTH) {
+            throw new BusinessException(400, "密码长度必须在8-32位之间");
+        }
+        
+        // 大写字母校验
+        if (!password.matches(".*[A-Z].*")) {
+            throw new BusinessException(400, "密码必须包含大写字母");
+        }
+        
+        // 小写字母校验
+        if (!password.matches(".*[a-z].*")) {
+            throw new BusinessException(400, "密码必须包含小写字母");
+        }
+        
+        // 数字校验
+        if (!password.matches(".*\\d.*")) {
+            throw new BusinessException(400, "密码必须包含数字");
+        }
+        
+        // 特殊字符校验
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            throw new BusinessException(400, "密码必须包含特殊字符");
+        }
+    }
+}
+```
+
+### 2.5 UserLockService - 用户锁定服务
+
+```java
+@Service
+public class UserLockService {
+    
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final long LOCK_DURATION_MINUTES = 30;
+    
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+    
+    public void recordLoginFailure(Long userId) {
+        String key = "login:fail:" + userId;
+        Integer count = redisTemplate.opsForValue().increment(key);
+        
+        if (count != null && count >= MAX_LOGIN_ATTEMPTS) {
+            String lockKey = "login:lock:" + userId;
+            redisTemplate.opsForValue().set(lockKey, "LOCKED", 
+                LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
+        }
+        
+        redisTemplate.expire(key, LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
+    }
+    
+    public boolean isAccountLocked(Long userId) {
+        String lockKey = "login:lock:" + userId;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(lockKey));
+    }
+    
+    public void resetLoginAttempts(Long userId) {
+        String key = "login:fail:" + userId;
+        redisTemplate.delete(key);
+    }
+}
+```
+
+### 2.6 TokenBlacklistService - Token黑名单服务
+
+```java
+@Service
+public class TokenBlacklistService {
+    
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+    
+    public void addToBlacklist(String token, Long userId, long expiresAt) {
+        String key = "token:blacklist:" + token;
+        long ttl = expiresAt - System.currentTimeMillis();
+        if (ttl > 0) {
+            redisTemplate.opsForValue().set(key, userId.toString(), ttl, TimeUnit.MILLISECONDS);
+        }
+    }
+    
+    public boolean isBlacklisted(String token) {
+        String key = "token:blacklist:" + token;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+    }
+    
+    public void removeFromBlacklist(String token) {
+        String key = "token:blacklist:" + token;
+        redisTemplate.delete(key);
     }
 }
 ```

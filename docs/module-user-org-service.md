@@ -102,6 +102,9 @@
 | phone | VARCHAR(20) | 手机号 |
 | org_id | BIGINT | 所属组织ID（主组织） |
 | status | TINYINT | 状态：1-正常，0-禁用 |
+| password_update_time | DATETIME | 密码更新时间 |
+| login_fail_count | INT | 登录失败次数 |
+| lock_until | DATETIME | 账户锁定到期时间 |
 
 #### 2.2.4 角色表 (sys_role)
 
@@ -218,6 +221,44 @@
 | description | VARCHAR(200) | 描述 |
 | sort_order | INT | 排序 |
 | status | VARCHAR(10) | 状态：0-禁用，1-启用 |
+
+#### 2.2.13 用户密码历史表 (sys_user_password_history)
+
+记录用户密码变更历史，用于密码重复校验。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键ID |
+| user_id | BIGINT | 用户ID |
+| password_hash | VARCHAR(255) | 历史密码哈希值 |
+| create_time | DATETIME | 创建时间 |
+
+#### 2.2.14 Token黑名单表 (sys_token_blacklist)
+
+记录已注销的Token，防止被恶意使用。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键ID |
+| token | VARCHAR(500) | Token值 |
+| user_id | BIGINT | 用户ID |
+| expires_at | DATETIME | Token过期时间 |
+| created_at | DATETIME | 创建时间 |
+
+#### 2.2.15 用户配置历史表 (sys_user_config_history)
+
+记录配置变更历史，支持配置回滚。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | BIGINT | 主键ID |
+| user_id | BIGINT | 用户ID（NULL表示全局配置） |
+| config_type | VARCHAR(50) | 配置类型 |
+| config_key | VARCHAR(100) | 配置键 |
+| config_value | TEXT | 配置值 |
+| operation_type | VARCHAR(20) | 操作类型：CREATE/UPDATE/DELETE |
+| operator_id | BIGINT | 操作人ID |
+| create_time | DATETIME | 创建时间 |
 
 ---
 
@@ -558,19 +599,37 @@ jwt:
 
 - 使用BCrypt加密存储
 - 登录时验证密码
-- 支持密码最小长度配置
+- 支持密码最小长度配置（默认8位）
+- 支持密码最大长度配置（默认32位）
 - 支持密码特殊字符要求配置
+- **密码策略校验**：密码必须包含大写字母、小写字母、数字、特殊字符
 
-### 8.2 Token安全
+### 8.2 用户锁定机制
+
+- 登录失败次数限制（默认5次）
+- 失败达到上限后账户自动锁定（默认30分钟）
+- 使用Redis记录登录失败次数和锁定状态
+- 登录成功后自动重置失败计数
+
+### 8.3 Token安全
 
 - JWT Token包含用户信息和权限列表
 - Token存储在Redis中，支持主动注销
 - Token过期时间24小时
+- **Token黑名单机制**：注销后Token加入黑名单，防止恶意使用
+- **双Token机制**：支持accessToken和refreshToken
 
-### 8.3 权限校验
+### 8.4 权限校验
 
 - 用户访问API时，从Token中提取权限信息
 - 通过Spring Security进行权限校验
+- 支持方法级别的权限注解（@PreAuthorize）
+
+### 8.5 密码历史管理
+
+- 记录最近N次密码（默认5次）
+- 修改密码时校验不能与历史密码重复
+- 支持密码过期策略（默认90天）
 
 ---
 
@@ -579,9 +638,14 @@ jwt:
 | 缓存Key | 说明 | 过期时间 |
 |---------|------|----------|
 | user::{id} | 用户信息缓存 | 1小时 |
+| user-roles::{userId} | 用户角色列表缓存 | 30分钟 |
+| user-permissions::{userId} | 用户权限列表缓存 | 30分钟 |
 | auth:token::{userId} | 用户Token缓存 | 24小时 |
 | config:{configKey} | 全局配置缓存 | 30分钟 |
 | config:type:{configType} | 按类型配置缓存 | 30分钟 |
+| i18n-messages:{messageKey}:{locale} | 多语言消息缓存 | 1小时 |
+| i18n-messages:locale:{locale} | 按语言缓存消息 | 1小时 |
+| i18n-messages:module:{locale}:{module} | 按模块缓存消息 | 1小时 |
 
 ---
 
@@ -597,10 +661,17 @@ jwt:
 | ja_JP | 日本語 |
 | ko_KR | 한국어 |
 
-### 10.2 消息文件位置
+### 10.2 消息存储
 
-- `common-i18n/src/main/resources/i18n/messages_zh_CN.properties` - 中文消息
-- `common-i18n/src/main/resources/i18n/messages_en_US.properties` - 英文消息
+消息支持两种存储方式：
+
+1. **静态资源文件**（适合固定消息）：
+   - `common-i18n/src/main/resources/i18n/messages_zh_CN.properties` - 中文消息
+   - `common-i18n/src/main/resources/i18n/messages_en_US.properties` - 英文消息
+
+2. **数据库存储**（适合动态配置）：
+   - `i18n_message` 表存储所有语言消息
+   - 支持动态添加/修改消息，无需重启服务
 
 ### 10.3 消息键示例
 
@@ -627,4 +698,19 @@ permission.not.found=权限不存在
 ```java
 // 在Service中使用
 throw new BusinessException(404, I18nMessageUtil.getMessage("role.not.found"));
+
+// 带参数的消息
+String message = I18nMessageUtil.getMessage("user.welcome", username);
 ```
+
+### 10.5 缓存机制
+
+- **本地缓存**：ConcurrentHashMap存储，应用启动时加载
+- **Spring Cache**：Redis分布式缓存，减少数据库查询
+- **缓存刷新**：消息变更时自动清除缓存
+
+### 10.6 多实例缓存同步
+
+- 使用 `ApplicationEvent` 发布消息变更事件
+- 通过 `Redis Pub/Sub` 通知其他实例刷新缓存
+- 事件类：`I18nMessageChangeEvent`

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.zhuji</groupId>
+        <artifactId>zhuji-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>common-crypto</artifactId>
+    <packaging>jar</packaging>
+    <name>Common Crypto - 加密模块</name>
+    <description>加密公共模块，封装Jasypt加密、接口签名校验功能</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.zhuji</groupId>
+            <artifactId>common-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Jasypt 加密 -->
+        <dependency>
+            <groupId>com.github.ulisesbocchio</groupId>
+            <artifactId>jasypt-spring-boot3-starter</artifactId>
+        </dependency>
+    </dependencies>
+</project>

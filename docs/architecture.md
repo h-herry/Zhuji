@@ -251,18 +251,28 @@ wrapper.eq(User::getUsername, username)
 ```
 
 ### 4.2 模块说明
-| 模块 | 依赖 | 被依赖 |
-|------|------|--------|
-| **common-core** | 无 | 所有模块 |
-| **common-security** | common-core | 所有需要鉴权的模块 |
-| **common-i18n** | common-core | 所有需要国际化的模块 |
-| **common-cache** | common-core, Redis | 所有需要缓存的模块 |
-| **common-log** | common-core, SkyWalking | 所有模块 |
-| **common-config** | common-core, Nacos | 所有模块 |
-| **user-org-service** | common-* | api-gateway |
-| **workflow-service** | common-*, Flowable | api-gateway |
-| **api-integration** | common-* | api-gateway |
-| **api-gateway** | common-*, Spring Cloud Gateway | 前端、第三方 |
+| 模块 | 依赖 | 被依赖 | 说明 |
+|------|------|--------|------|
+| **common-core** | 无 | 所有模块 | 核心工具类、异常处理、基础实体 |
+| **common-security** | common-core | 所有需要鉴权的模块 | JWT认证、权限控制、用户信息获取 |
+| **common-i18n** | common-core | 所有需要国际化的模块 | 多语言支持、数据库消息管理、缓存机制 |
+| **common-cache** | common-core, Redis | 所有需要缓存的模块 | Redis缓存、分布式锁、缓存工具 |
+| **common-log** | common-core, SkyWalking | 所有模块 | 日志切面、链路追踪 |
+| **common-config** | common-core, Nacos | 所有模块 | Nacos配置中心集成 |
+| **common-mq** | common-core, RabbitMQ | 所有需要异步处理的模块 | 消息队列、消息监听器 |
+| **common-task** | common-core | 所有需要定时任务的模块 | Spring Scheduler定时任务、任务日志 |
+| **common-monitor** | common-core | 所有模块 | Prometheus监控、Zipkin链路追踪 |
+| **common-crypto** | common-core, Jasypt | 所有需要加密的模块 | 数据加密、接口签名校验 |
+| **common-export** | common-core, EasyExcel | 所有需要导出的模块 | Excel导出、大文件导出 |
+| **common-audit** | common-core, common-security | 所有需要审计的模块 | 操作审计日志 |
+| **user-org-service** | common-* | api-gateway | 用户组织管理（多角色/多组织/可配置化） |
+| **workflow-service** | common-*, Flowable | api-gateway | Flowable工作流引擎 |
+| **notification-service** | common-*, common-mq | api-gateway | 消息通知服务 |
+| **file-service** | common-* | api-gateway | 文件上传存储服务 |
+| **third-party-service** | common-* | api-gateway | 第三方平台集成服务 |
+| **system-service** | common-* | api-gateway | 系统参数配置服务 |
+| **system-monitor** | common-*, common-monitor | api-gateway | 系统监控服务 |
+| **api-gateway** | common-*, Spring Cloud Gateway | 前端、第三方 | API网关 |
 
 ### 4.3 Maven 依赖管理
 ```xml
@@ -532,6 +542,6 @@ public class TenantInterceptor implements Interceptor {
 
 ---
 
-**文档版本**: v1.0  
-**最后更新**: 2026-05-20  
+**文档版本**: v1.1  
+**最后更新**: 2026-05-21  
 **维护者**: 筑基架构团队

@@ -5,11 +5,15 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.zhuji.common.core.exception.BusinessException;
 import com.zhuji.userorg.entity.I18nMessage;
+import com.zhuji.userorg.event.I18nMessageChangeEvent;
 import com.zhuji.userorg.mapper.I18nMessageMapper;
 import com.zhuji.userorg.service.I18nMessageService;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,12 +33,16 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
     @Autowired
     private I18nMessageMapper i18nMessageMapper;
 
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
     @PostConstruct
     public void init() {
         refreshMessageCache();
     }
 
     @Override
+    @Cacheable(value = "i18n-messages", key = "#messageKey + ':' + #locale")
     public String getMessage(String messageKey, String locale) {
         if (!StringUtils.hasText(locale)) {
             locale = LocaleContextHolder.getLocale().toString();
@@ -63,6 +71,7 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
     }
 
     @Override
+    @Cacheable(value = "i18n-messages", key = "'locale:' + #locale")
     public Map<String, String> getMessagesByLocale(String locale) {
         Map<String, String> cachedMessages = messageCache.get(locale);
         if (cachedMessages != null) {
@@ -79,6 +88,7 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
     }
 
     @Override
+    @Cacheable(value = "i18n-messages", key = "'module:' + #locale + ':' + #module")
     public Map<String, String> getMessagesByModule(String locale, String module) {
         LambdaQueryWrapper<I18nMessage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(I18nMessage::getLocale, locale)
@@ -111,6 +121,7 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
     }
 
     @Override
+    @CacheEvict(value = "i18n-messages", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean saveOrUpdateMessage(I18nMessage message) {
         if (message.getId() == null) {
@@ -134,31 +145,37 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
         boolean result = saveOrUpdate(message);
         if (result) {
             refreshMessageCache();
+            eventPublisher.publishEvent(new I18nMessageChangeEvent(this));
         }
         return result;
     }
 
     @Override
+    @CacheEvict(value = "i18n-messages", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteMessage(Long id) {
         boolean result = removeById(id);
         if (result) {
             refreshMessageCache();
+            eventPublisher.publishEvent(new I18nMessageChangeEvent(this));
         }
         return result;
     }
 
     @Override
+    @CacheEvict(value = "i18n-messages", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean batchDeleteMessages(List<Long> ids) {
         boolean result = removeByIds(ids);
         if (result) {
             refreshMessageCache();
+            eventPublisher.publishEvent(new I18nMessageChangeEvent(this));
         }
         return result;
     }
 
     @Override
+    @CacheEvict(value = "i18n-messages", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean toggleMessage(Long id, Integer isActive) {
         I18nMessage message = getById(id);
@@ -171,6 +188,7 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
         boolean result = updateById(message);
         if (result) {
             refreshMessageCache();
+            eventPublisher.publishEvent(new I18nMessageChangeEvent(this));
         }
         return result;
     }
@@ -183,6 +201,7 @@ public class I18nMessageServiceImpl extends ServiceImpl<I18nMessageMapper, I18nM
     }
 
     @Override
+    @CacheEvict(value = "i18n-messages", allEntries = true)
     public void refreshMessageCache() {
         log.info("刷新多语言消息缓存...");
         messageCache.clear();

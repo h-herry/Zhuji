@@ -4,9 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhuji.common.core.exception.BusinessException;
 import com.zhuji.common.i18n.util.I18nMessageUtil;
+import com.zhuji.userorg.config.validator.ConfigValidator;
 import com.zhuji.userorg.entity.*;
+import com.zhuji.userorg.event.ConfigChangeEvent;
 import com.zhuji.userorg.mapper.*;
 import com.zhuji.userorg.service.UserConfigService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +29,23 @@ public class UserConfigServiceImpl implements UserConfigService {
     private final UserOrgRelationMapper userOrgRelationMapper;
     private final RoleMapper roleMapper;
     private final OrgUnitMapper orgUnitMapper;
+    private final List<ConfigValidator> configValidators;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserConfigServiceImpl(UserConfigMapper userConfigMapper,
                                UserRoleRelationMapper userRoleRelationMapper,
                                UserOrgRelationMapper userOrgRelationMapper,
                                RoleMapper roleMapper,
-                               OrgUnitMapper orgUnitMapper) {
+                               OrgUnitMapper orgUnitMapper,
+                               List<ConfigValidator> configValidators,
+                               ApplicationEventPublisher eventPublisher) {
         this.userConfigMapper = userConfigMapper;
         this.userRoleRelationMapper = userRoleRelationMapper;
         this.userOrgRelationMapper = userOrgRelationMapper;
         this.roleMapper = roleMapper;
         this.orgUnitMapper = orgUnitMapper;
+        this.configValidators = configValidators;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -54,32 +65,40 @@ public class UserConfigServiceImpl implements UserConfigService {
     }
 
     @Override
+    @Cacheable(value = "user-config", key = "#userId")
     public List<UserConfig> getUserConfigs(Long userId) {
         return userConfigMapper.selectByUserId(userId);
     }
 
     @Override
+    @Cacheable(value = "user-config", key = "#userId + ':' + #configType")
     public List<UserConfig> getUserConfigsByType(Long userId, String configType) {
         return userConfigMapper.selectByUserIdAndType(userId, configType);
     }
 
     @Override
+    @Cacheable(value = "user-config", key = "#userId + ':' + #configKey")
     public UserConfig getUserConfigByKey(Long userId, String configKey) {
         return userConfigMapper.selectByUserIdAndKey(userId, configKey);
     }
 
     @Override
+    @CacheEvict(value = "user-config", key = "#config.userId", allEntries = true)
     public UserConfig createUserConfig(UserConfig config) {
+        validateConfig(config.getConfigKey(), config.getConfigValue());
         UserConfig existing = userConfigMapper.selectByUserIdAndKey(config.getUserId(), config.getConfigKey());
         if (existing != null) {
             throw new BusinessException(400, I18nMessageUtil.getMessage("validation.unique", "配置键"));
         }
         userConfigMapper.insert(config);
+        eventPublisher.publishEvent(new ConfigChangeEvent(this, config.getConfigKey()));
         return config;
     }
 
     @Override
+    @CacheEvict(value = "user-config", key = "#userId", allEntries = true)
     public UserConfig updateUserConfig(Long id, UserConfig config) {
+        validateConfig(config.getConfigKey(), config.getConfigValue());
         UserConfig existing = userConfigMapper.selectById(id);
         if (existing == null) {
             throw new BusinessException(404, I18nMessageUtil.getMessage("user.config.not.found"));
@@ -95,16 +114,27 @@ public class UserConfigServiceImpl implements UserConfigService {
         config.setId(id);
         config.setUpdateTime(LocalDateTime.now());
         userConfigMapper.updateById(config);
+        eventPublisher.publishEvent(new ConfigChangeEvent(this, config.getConfigKey()));
         return config;
     }
 
     @Override
+    @CacheEvict(value = "user-config", allEntries = true)
     public void deleteUserConfig(Long id) {
         UserConfig config = userConfigMapper.selectById(id);
         if (config == null) {
             throw new BusinessException(404, I18nMessageUtil.getMessage("user.config.not.found"));
         }
         userConfigMapper.deleteById(id);
+        eventPublisher.publishEvent(new ConfigChangeEvent(this, config.getConfigKey()));
+    }
+
+    private void validateConfig(String configKey, String configValue) {
+        for (ConfigValidator validator : configValidators) {
+            if (validator.supports(configKey)) {
+                validator.validate(configKey, configValue);
+            }
+        }
     }
 
     @Override

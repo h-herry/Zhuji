@@ -89,6 +89,34 @@ public class CacheKeys {
     public static String permissionKey(Long roleId) {
         return "permission:role:" + roleId;
     }
+
+    public static String userRolesKey(Long userId) {
+        return "user-roles:" + userId;
+    }
+
+    public static String userPermissionsKey(Long userId) {
+        return "user-permissions:" + userId;
+    }
+
+    public static String configKey(String configKey) {
+        return "config:" + configKey;
+    }
+
+    public static String configTypeKey(String configType) {
+        return "config:type:" + configType;
+    }
+
+    public static String i18nMessageKey(String messageKey, String locale) {
+        return "i18n-messages:" + messageKey + ":" + locale;
+    }
+
+    public static String i18nLocaleKey(String locale) {
+        return "i18n-messages:locale:" + locale;
+    }
+
+    public static String i18nModuleKey(String locale, String module) {
+        return "i18n-messages:module:" + locale + ":" + module;
+    }
 }
 ```
 
@@ -208,17 +236,31 @@ public RedisClusterConfiguration redisClusterConfiguration() {
 
 ### 5.1 缓存过期时间
 
-| 缓存类型 | 过期时间 | 说明 |
-|----------|----------|------|
-| 用户信息 | 1小时 | 频繁访问 |
-| 认证Token | 24小时 | 与JWT过期时间一致 |
-| 组织信息 | 30分钟 | 相对稳定 |
-| 权限信息 | 1小时 | 频繁变更 |
+| 缓存类型 | 缓存Key | 过期时间 | 说明 |
+|----------|---------|----------|------|
+| 用户信息 | user:{userId} | 1小时 | 频繁访问 |
+| 用户角色 | user-roles:{userId} | 30分钟 | 角色变更时清除 |
+| 用户权限 | user-permissions:{userId} | 30分钟 | 权限变更时清除 |
+| 认证Token | auth:token:{userId} | 24小时 | 与JWT过期时间一致 |
+| 组织信息 | org:{orgId} | 30分钟 | 相对稳定 |
+| 角色权限 | permission:role:{roleId} | 1小时 | 权限变更时清除 |
+| 全局配置 | config:{configKey} | 30分钟 | 配置变更时清除 |
+| 配置类型 | config:type:{configType} | 30分钟 | 配置变更时清除 |
+| 多语言消息 | i18n-messages:{key}:{locale} | 1小时 | 消息变更时清除 |
+| 语言缓存 | i18n-messages:locale:{locale} | 1小时 | 消息变更时清除 |
+| 模块消息 | i18n-messages:module:{locale}:{module} | 1小时 | 消息变更时清除 |
 
 ### 5.2 缓存淘汰策略
 
 - **LRU**（Least Recently Used）：最近最少使用
 - **TTL**（Time To Live）：定时过期
+- **主动清除**：数据变更时主动清除相关缓存
+
+### 5.3 缓存一致性
+
+- **Cache-Aside模式**：先更新数据库，再删除缓存
+- **双写一致性**：使用分布式锁保证并发场景下的数据一致性
+- **多实例同步**：通过Redis Pub/Sub实现跨实例缓存刷新通知
 
 ---
 
