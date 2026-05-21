@@ -11,8 +11,13 @@ zhuji/
 ├── common-cache/             # 公共缓存模块（Redis封装/缓存抽象层/分布式锁）
 ├── common-log/               # 公共日志模块（Logstash/Prometheus/Grafana/SkyWalking）
 ├── common-config/            # 公共配置模块（Nacos配置加载/动态配置刷新）
-├── common-mq/                # 公共消息队列模块
-├── common-i18n/              # 公共国际化模块（多语言支持/多语言可配置化）
+├── common-mq/                # 公共消息队列模块（RabbitMQ集成）
+├── common-i18n/              # 公共国际化模块（多语言支持/多语言可配置化/数据库消息管理）
+├── common-task/              # 公共定时任务模块（Spring Scheduler/任务日志）
+├── common-monitor/           # 公共监控模块（Prometheus/Zipkin集成）
+├── common-crypto/            # 公共加密模块（Jasypt/接口签名校验）
+├── common-export/            # 公共导出模块（EasyExcel集成）
+├── common-audit/             # 公共审计模块（操作审计日志）
 ├── user-org-service/         # 用户/组织架构/角色/权限管理（多角色/多组织/可配置化）
 ├── workflow-service/         # 工作流引擎集成（Flowable 7.0）
 ├── notification-service/     # 通知服务（邮件/短信/推送）
@@ -87,13 +92,18 @@ zhuji/
 | 模块名称 | 职责说明 | 关键技术 |
 |---------|---------|---------|
 | **common-core** | 全局常量/枚举/异常定义/基础工具类 | Lombok, Hutool |
-| **common-security** | Spring Security配置/JWT生成与校验 | JWT, Spring Security, Sentinel |
-| **common-cache** | Redis封装/缓存抽象层/分布式锁 | RedisTemplate, Spring Cache |
+| **common-security** | Spring Security配置/JWT生成与校验/密码策略/用户锁定 | JWT, Spring Security, Sentinel |
+| **common-cache** | Redis封装/缓存抽象层/分布式锁/缓存一致性 | RedisTemplate, Spring Cache |
 | **common-log** | 日志规范/日志拦截/链路追踪 | SLF4J, Logback, MDC, ELK |
-| **common-config** | Nacos配置加载/动态配置刷新 | Nacos Config |
+| **common-config** | Nacos配置加载/动态配置刷新/配置版本管理 | Nacos Config |
 | **common-mq** | 消息队列封装/统一消息接口 | RabbitMQ, Kafka |
-| **common-i18n** | 国际化支持/多语言切换/资源热加载/多语言可配置化 | Spring MessageSource |
-| **user-org-service** | 用户/组织架构/角色/权限管理（多角色/多组织/可配置化） | MyBatis-Plus, RBAC, Seata |
+| **common-i18n** | 国际化支持/多语言切换/资源热加载/数据库消息管理/缓存同步 | Spring MessageSource |
+| **common-task** | 定时任务调度/任务日志/任务监控 | Spring Scheduler, Cron |
+| **common-monitor** | 指标采集/Prometheus集成/Zipkin链路追踪 | Micrometer, Prometheus, Zipkin |
+| **common-crypto** | 敏感数据加密/接口签名校验/Jasypt | Jasypt, Signature |
+| **common-export** | Excel导出/大文件导出/注解驱动 | EasyExcel |
+| **common-audit** | 操作审计日志/请求响应记录 | AOP, SLF4J |
+| **user-org-service** | 用户/组织架构/角色/权限管理（多角色/多组织/可配置化/安全加固） | MyBatis-Plus, RBAC, Seata |
 | **workflow-service** | Flowable工作流引擎/流程定义/实例管理/任务流转 | Flowable 7.0 |
 | **notification-service** | 邮件/短信/推送通知服务 | Spring Mail, RabbitMQ |
 | **file-service** | 文件上传/下载/存储服务 | MinIO, Local Storage |
@@ -124,7 +134,7 @@ zhuji/
 ### 已完成功能
 - [x] **用户组织管理** - 用户CRUD/角色权限/组织架构树/多角色/多组织/可配置化
 - [x] **工作流引擎** - Flowable 7.0 集成/流程定义/发布/实例管理/任务流转
-- [x] **多语言支持** - 中英文切换/资源热加载/多语言可配置化/数据库消息管理
+- [x] **多语言支持** - 中英文切换/资源热加载/多语言可配置化/数据库消息管理/缓存同步
 - [x] **通知服务** - 邮件/短信/推送/微信多渠道发送
 - [x] **文件服务** - 本地存储/MinIO云存储/分片上传
 - [x] **系统参数配置** - 数据字典/参数配置/分类管理/多语言支持
@@ -132,9 +142,14 @@ zhuji/
 - [x] **API网关** - 路由转发/JWT鉴权/限流熔断
 - [x] **第三方集成** - 适配器模式/HTTP调用/短信发送/重试机制
 - [x] **公共核心模块** - 统一响应/异常处理/工具类/雪花ID生成
-- [x] **公共安全模块** - JWT认证/权限控制/用户信息获取
-- [x] **公共缓存模块** - Redis配置/分布式锁/缓存工具
+- [x] **公共安全模块** - JWT认证/权限控制/用户信息获取/密码策略/用户锁定
+- [x] **公共缓存模块** - Redis配置/分布式锁/缓存工具/缓存一致性
 - [x] **公共日志模块** - 日志切面/链路追踪
+- [x] **公共定时任务模块** - Spring Scheduler/任务日志/任务监控
+- [x] **公共监控模块** - Prometheus集成/Zipkin链路追踪
+- [x] **公共加密模块** - Jasypt加密/接口签名校验
+- [x] **公共导出模块** - EasyExcel数据导出
+- [x] **公共审计模块** - 操作审计日志
 - [x] **测试覆盖** - JUnit 5/Mockito/Rest Assured/JaCoCo代码覆盖率
 - [x] **配置中心** - Nacos配置中心集成/配置热更新
 - [x] **服务注册与发现** - Nacos服务注册与发现
@@ -145,9 +160,13 @@ zhuji/
 - [x] **定时任务** - Spring Scheduler定时任务
 - [x] **API文档增强** - Knife4j注解完善
 - [x] **监控告警** - Prometheus+Grafana监控告警
-- [x] **安全加固** - 接口签名校验/敏感信息加密
+- [x] **安全加固** - 接口签名校验/敏感信息加密/密码策略/用户锁定/Token黑名单
 - [x] **数据导出** - EasyExcel数据导出
 - [x] **审计日志** - 操作审计日志
+- [x] **密码策略** - 密码复杂度校验/密码过期/历史记录
+- [x] **用户锁定** - 登录失败限制/Redis锁定机制
+- [x] **配置管理** - 配置缓存/配置校验/配置变更通知/配置版本管理
+- [x] **Token管理** - 双Token机制/多端登录/黑名单机制
 
 ### 核心特性详解
 
@@ -174,6 +193,19 @@ zhuji/
 - **任务管理**：任务的查询、领取、完成、转交
 - **历史记录**：流程历史、任务历史的查询
 - **流程变量**：支持复杂业务数据的流转
+
+#### 4. 安全加固
+- **密码策略**：密码复杂度校验（长度/大小写/数字/特殊字符）、密码过期策略、密码历史记录
+- **用户锁定**：登录失败次数限制、基于Redis的账户锁定机制、自动解锁
+- **Token管理**：双Token机制（accessToken + refreshToken）、多端登录控制、Token黑名单
+- **角色权限缓存**：用户角色/权限缓存、缓存一致性维护
+
+#### 5. 配置管理
+- **配置缓存**：Spring Cache缓存配置、减少数据库查询
+- **配置校验**：ConfigValidator接口、针对不同配置键进行校验
+- **配置变更通知**：ApplicationEvent事件通知、Redis Pub/Sub跨实例缓存同步
+- **配置版本管理**：配置变更历史记录、支持配置回滚
+- **配置加密**：Jasypt加密敏感配置、配置导入导出
 
 ## 🚀 快速开始
 
