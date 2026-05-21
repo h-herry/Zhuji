@@ -6,6 +6,7 @@ import com.zhuji.userorg.entity.ConfigHistory;
 import com.zhuji.userorg.entity.UserConfig;
 import com.zhuji.userorg.mapper.ConfigHistoryMapper;
 import com.zhuji.userorg.mapper.UserConfigMapper;
+import com.zhuji.userorg.service.ConfigEncryptionService;
 import com.zhuji.userorg.service.ConfigHistoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +18,14 @@ public class ConfigHistoryServiceImpl implements ConfigHistoryService {
 
     private final ConfigHistoryMapper configHistoryMapper;
     private final UserConfigMapper userConfigMapper;
+    private final ConfigEncryptionService configEncryptionService;
 
     public ConfigHistoryServiceImpl(ConfigHistoryMapper configHistoryMapper,
-                                   UserConfigMapper userConfigMapper) {
+                                   UserConfigMapper userConfigMapper,
+                                   ConfigEncryptionService configEncryptionService) {
         this.configHistoryMapper = configHistoryMapper;
         this.userConfigMapper = userConfigMapper;
+        this.configEncryptionService = configEncryptionService;
     }
 
     @Override
@@ -77,7 +81,16 @@ public class ConfigHistoryServiceImpl implements ConfigHistoryService {
             throw new BusinessException(404, I18nMessageUtil.getMessage("config.not.found"));
         }
 
-        config.setConfigValue(targetVersion.getConfigValue());
+        String valueToSet = targetVersion.getConfigValue();
+        if (configEncryptionService.isSensitive(targetVersion.getConfigKey())) {
+            try {
+                String decrypted = configEncryptionService.decrypt(targetVersion.getConfigValue());
+                valueToSet = configEncryptionService.encrypt(decrypted);
+            } catch (Exception e) {
+            }
+        }
+
+        config.setConfigValue(valueToSet);
         userConfigMapper.updateById(config);
 
         saveConfigHistory(configId, config.getUserId(), config.getConfigKey(),

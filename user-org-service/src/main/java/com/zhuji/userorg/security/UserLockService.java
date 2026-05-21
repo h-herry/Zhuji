@@ -1,5 +1,6 @@
 package com.zhuji.userorg.security;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -12,8 +13,10 @@ public class UserLockService {
 
     private static final String LOCK_KEY_PREFIX = "user:lock:";
     private static final String FAIL_COUNT_PREFIX = "user:fail:";
-    private static final int MAX_FAIL_COUNT = 5;
     private static final long LOCK_MINUTES = 30;
+
+    @Value("${user.lock.max.fail.count:5}")
+    private int maxFailCount;
 
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -28,13 +31,10 @@ public class UserLockService {
 
     public void incrementFailCount(Long userId) {
         String failKey = FAIL_COUNT_PREFIX + userId;
-        Object current = redisTemplate.opsForValue().get(failKey);
-        int count = (current != null) ? (int) current : 0;
-        count++;
+        Long count = redisTemplate.opsForValue().increment(failKey);
+        redisTemplate.expire(failKey, 1, TimeUnit.HOURS);
         
-        redisTemplate.opsForValue().set(failKey, count, 1, TimeUnit.HOURS);
-        
-        if (count >= MAX_FAIL_COUNT) {
+        if (count != null && count >= maxFailCount) {
             lockUser(userId);
         }
     }

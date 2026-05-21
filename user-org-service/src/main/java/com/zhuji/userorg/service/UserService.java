@@ -208,6 +208,7 @@ public class UserService extends ServiceImpl<UserMapper, User> {
                 .collect(Collectors.toList());
 
         String newAccessToken = jwtService.generateAccessToken(user.getUsername(), permissionCodes);
+        String newRefreshToken = jwtService.generateRefreshToken(user.getUsername());
 
         redisTemplate.opsForValue().set(
             TOKEN_PREFIX + user.getId(),
@@ -216,9 +217,16 @@ public class UserService extends ServiceImpl<UserMapper, User> {
             TimeUnit.SECONDS
         );
 
+        redisTemplate.opsForValue().set(
+            REFRESH_TOKEN_PREFIX + user.getId(),
+            newRefreshToken,
+            jwtService.getRefreshTokenExpiration(),
+            TimeUnit.SECONDS
+        );
+
         return LoginResponse.builder()
                 .accessToken(newAccessToken)
-                .refreshToken(refreshToken)
+                .refreshToken(newRefreshToken)
                 .userId(user.getId())
                 .username(user.getUsername())
                 .tokenType("Bearer")

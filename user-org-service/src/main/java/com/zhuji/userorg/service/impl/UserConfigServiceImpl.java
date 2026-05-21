@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -239,15 +240,17 @@ public class UserConfigServiceImpl implements UserConfigService {
         }
 
         if (!rolesToAdd.isEmpty()) {
+            List<Role> roles = roleMapper.selectBatchIds(rolesToAdd);
+            Set<Long> validRoleIds = roles.stream().map(Role::getId).collect(Collectors.toSet());
+            for (Long roleId : rolesToAdd) {
+                if (!validRoleIds.contains(roleId)) {
+                    throw new BusinessException(404, I18nMessageUtil.getMessage("role.not.found"));
+                }
+            }
+
             List<UserRoleRelation> newRelations = new ArrayList<>();
             for (int i = 0; i < rolesToAdd.size(); i++) {
                 Long roleId = rolesToAdd.get(i);
-
-                Role role = roleMapper.selectById(roleId);
-                if (role == null) {
-                    throw new BusinessException(404, I18nMessageUtil.getMessage("role.not.found"));
-                }
-
                 UserRoleRelation relation = new UserRoleRelation();
                 relation.setUserId(userId);
                 relation.setRoleId(roleId);
@@ -289,15 +292,17 @@ public class UserConfigServiceImpl implements UserConfigService {
         }
 
         if (!orgsToAdd.isEmpty()) {
+            List<OrgUnit> orgs = orgUnitMapper.selectBatchIds(orgsToAdd);
+            Set<Long> validOrgIds = orgs.stream().map(OrgUnit::getId).collect(Collectors.toSet());
+            for (Long orgId : orgsToAdd) {
+                if (!validOrgIds.contains(orgId)) {
+                    throw new BusinessException(404, I18nMessageUtil.getMessage("org.not.found"));
+                }
+            }
+
             List<UserOrgRelation> newRelations = new ArrayList<>();
             for (int i = 0; i < orgsToAdd.size(); i++) {
                 Long orgId = orgsToAdd.get(i);
-
-                OrgUnit org = orgUnitMapper.selectById(orgId);
-                if (org == null) {
-                    throw new BusinessException(404, I18nMessageUtil.getMessage("org.not.found"));
-                }
-
                 UserOrgRelation relation = new UserOrgRelation();
                 relation.setUserId(userId);
                 relation.setOrgId(orgId);
