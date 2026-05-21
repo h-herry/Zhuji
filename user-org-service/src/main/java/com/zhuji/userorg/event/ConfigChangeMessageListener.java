@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -11,15 +12,24 @@ import org.springframework.stereotype.Component;
 public class ConfigChangeMessageListener implements MessageListener {
 
     private final CacheManager cacheManager;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    public ConfigChangeMessageListener(CacheManager cacheManager) {
+    public ConfigChangeMessageListener(CacheManager cacheManager,
+                                       RedisTemplate<String, Object> redisTemplate) {
         this.cacheManager = cacheManager;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            ConfigChangeMessage configMessage = (ConfigChangeMessage) message;
+            byte[] body = message.getBody();
+            ConfigChangeMessage configMessage = (ConfigChangeMessage) redisTemplate.getValueSerializer().deserialize(body);
+
+            if (configMessage == null) {
+                log.warn("收到空的配置变更消息");
+                return;
+            }
 
             log.info("收到配置变更消息: userId={}, key={}, operation={}",
                      configMessage.getUserId(), configMessage.getConfigKey(), configMessage.getOperation());
