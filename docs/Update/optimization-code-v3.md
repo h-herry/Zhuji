@@ -744,58 +744,60 @@ public class ConfigHistoryServiceImpl implements ConfigHistoryService {
 ```java
 package com.zhuji.userorg.service;
 
-import org.jasypt.encryption.StringEncryptor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 
 @Service
 public class ConfigEncryptionService {
 
-    private final StringEncryptor stringEncryptor;
-    
-    // 敏感配置键前缀
     private static final List<String> SENSITIVE_PREFIXES = Arrays.asList(
         "password", "apiKey", "secret", "token", "credential", "key", "auth"
     );
 
-    public ConfigEncryptionService(StringEncryptor stringEncryptor) {
-        this.stringEncryptor = stringEncryptor;
-    }
+    @Value("${config.encryption.key:zhuji-default-encryption-key-16}")
+    private String encryptionKey;
 
-    /**
-     * 判断配置是否为敏感配置
-     */
     public boolean isSensitive(String configKey) {
         if (configKey == null) return false;
         String lowerKey = configKey.toLowerCase();
         return SENSITIVE_PREFIXES.stream()
-            .anyMatch(prefix -> lowerKey.contains(prefix));
+            .anyMatch(lowerKey::contains);
     }
 
-    /**
-     * 加密配置值
-     */
-    public String encrypt(String configKey, String configValue) {
-        if (!isSensitive(configKey) || configValue == null) {
-            return configValue;
-        }
-        return stringEncryptor.encrypt(configValue);
-    }
-
-    /**
-     * 解密配置值
-     */
-    public String decrypt(String configKey, String configValue) {
-        if (!isSensitive(configKey) || configValue == null) {
-            return configValue;
-        }
+    public String encrypt(String value) {
+        if (value == null) return null;
         try {
-            return stringEncryptor.decrypt(configValue);
+            SecretKeySpec secretKey = new SecretKeySpec(
+                encryptionKey.getBytes(StandardCharsets.UTF_8), "AES"
+            );
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+            byte[] encrypted = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            return Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception e) {
-            // 如果解密失败，说明可能是明文，直接返回
-            return configValue;
+            throw new RuntimeException("加密失败", e);
+        }
+    }
+
+    public String decrypt(String encryptedValue) {
+        if (encryptedValue == null) return null;
+        try {
+            SecretKeySpec secretKey = new SecretKeySpec(
+                encryptionKey.getBytes(StandardCharsets.UTF_8), "AES"
+            );
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, secretKey);
+            byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(encryptedValue));
+            return new String(decrypted, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new RuntimeException("解密失败", e);
         }
     }
 }
@@ -810,43 +812,15 @@ public class ConfigEncryptionService {
 public class UserConfigServiceImpl implements UserConfigService {
 
     private final UserConfigMapper userConfigMapper;
-    private final ConfigEncryptionService encryptionService;
-    
-    // 敏感配置键前缀
-    private static final List<String> SENSITIVE_PREFIXES = Arrays.asList(
-        "password", "apiKey", "secret", "token", "credential", "key", "auth"
-    );
+    private final ConfigEncryptionService configEncryptionService;
+    // ... 其他依赖
 
     public UserConfigServiceImpl(UserConfigMapper userConfigMapper,
-                                 ConfigEncryptionService encryptionService) {
+                               ConfigEncryptionService configEncryptionService,
+                               // ... 其他依赖注入) {
         this.userConfigMapper = userConfigMapper;
-        this.encryptionService = encryptionService;
-    }
-
-    /**
-     * 判断配置是否为敏感配置
-     */
-    private boolean isSensitive(String configKey) {
-        if (configKey == null) return false;
-        String lowerKey = configKey.toLowerCase();
-        return SENSITIVE_PREFIXES.stream()
-            .anyMatch(prefix -> lowerKey.contains(prefix));
-    }
-
-    /**
-     * 加密配置值
-     */
-    private String encryptValue(String value) {
-        if (value == null) return null;
-        return encryptionService.encrypt(null, value);
-    }
-
-    /**
-     * 解密配置值
-     */
-    private String decryptValue(String encryptedValue) {
-        if (encryptedValue == null) return null;
-        return encryptionService.decrypt(null, encryptedValue);
+        this.configEncryptionService = configEncryptionService;
+        // ...
     }
 
     @Override
@@ -854,9 +828,12 @@ public class UserConfigServiceImpl implements UserConfigService {
     public UserConfig getUserConfigByKey(Long userId, String configKey) {
         UserConfig config = userConfigMapper.selectByUserIdAndKey(userId, configKey);
         
-        if (config != null && isSensitive(configKey)) {
+        if (config != null && configEncryptionService.isSensitive(configKey)) {
             // ✅ 解密敏感配置
-            config.setConfigValue(decryptValue(config.getConfigValue()));
+            try {
+                config.setConfigValue(configEncryptionService.decrypt(config.getConfigValue()));
+            } catch (Exception e) {
+            }
         }
         
         return config;
@@ -871,12 +848,12 @@ public class UserConfigServiceImpl implements UserConfigService {
         UserConfig existing = userConfigMapper.selectByUserIdAndKey(
             config.getUserId(), config.getConfigKey());
         if (existing != null) {
-            throw new BusinessException(400, "配置键已存在");
+            throw new BusinessException(400, I18nMessageUtil.getMessage("validation.unique", "配置键"));
         }
         
         // ✅ 加密敏感配置
-        if (isSensitive(config.getConfigKey())) {
-            config.setConfigValue(encryptValue(config.getConfigValue()));
+        if (configEncryptionService.isSensitive(config.getConfigKey())) {
+            config.setConfigValue(configEncryptionService.encrypt(config.getConfigValue()));
         }
         
         userConfigMapper.insert(config);
@@ -901,25 +878,24 @@ public class UserConfigServiceImpl implements UserConfigService {
         
         UserConfig existing = userConfigMapper.selectById(id);
         if (existing == null) {
-            throw new BusinessException(404, "配置不存在");
+            throw new BusinessException(404, I18nMessageUtil.getMessage("user.config.not.found"));
         }
 
         if (!existing.getConfigKey().equals(config.getConfigKey())) {
             UserConfig duplicate = userConfigMapper.selectByUserIdAndKey(
                 existing.getUserId(), config.getConfigKey());
             if (duplicate != null) {
-                throw new BusinessException(400, "配置键已存在");
+                throw new BusinessException(400, I18nMessageUtil.getMessage("validation.unique", "配置键"));
             }
         }
 
-        config.setId(id);
-        config.setUpdateTime(java.time.LocalDateTime.now());
-        
         // ✅ 加密敏感配置
-        if (isSensitive(config.getConfigKey())) {
-            config.setConfigValue(encryptValue(config.getConfigValue()));
+        if (configEncryptionService.isSensitive(config.getConfigKey())) {
+            config.setConfigValue(configEncryptionService.encrypt(config.getConfigValue()));
         }
         
+        config.setId(id);
+        config.setUpdateTime(LocalDateTime.now());
         userConfigMapper.updateById(config);
         
         // 保存历史
@@ -938,17 +914,15 @@ public class UserConfigServiceImpl implements UserConfigService {
 }
 ```
 
-### 5.3 Jasypt 配置
+### 5.3 配置文件
 
 **位置**: `application.yml`
 
 ```yaml
-# Jasypt 加密配置
-jasypt:
-  encryptor:
-    algorithm: AES
-    password: ${JASYPT_ENCRYPTOR_PASSWORD:ZhujiDefaultEncryptorPassword}
-    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+# 配置加密
+config:
+  encryption:
+    key: ${CONFIG_ENCRYPTION_KEY:zhuji-default-encryption-key-16}
 ```
 
 ---
@@ -958,22 +932,42 @@ jasypt:
 ### 8.1 pom.xml 依赖
 
 ```xml
-<!-- Jasypt 加密 -->
-<dependency>
-    <groupId>com.github.ulisesbocchio</groupId>
-    <artifactId>jasypt-spring-boot-starter</artifactId>
-    <version>3.0.5</version>
-</dependency>
+<!-- 无需额外依赖，使用JDK内置的javax.crypto -->
 ```
 
 ### 8.2 环境变量配置
 
 ```bash
 # 设置加密密钥（生产环境必须修改）
-export JASYPT_ENCRYPTOR_PASSWORD=your-secret-password
+export CONFIG_ENCRYPTION_KEY=your-secret-key-16-or-32-chars
 ```
 
 ---
 
 **文件生成时间**: 2026-05-21 17:10:00  
 **对应报告**: [源码深度分析报告 V3](./source-code-analysis-v3.md)
+
+---
+
+## 九、实现状态总结
+
+| 问题编号 | 问题描述 | 状态 | 涉及文件 |
+| :--- | :--- | :--- | :--- |
+| 1 | assignRoles 批量插入 | ✅ 已实现 | `UserRoleMapper.java`, `UserRoleMapper.xml`, `UserService.java` |
+| 2 | setPrimaryRole/Org 批量更新 | ✅ 已实现 | `UserRoleRelationMapper.java/xml`, `UserOrgRelationMapper.java/xml`, `UserConfigServiceImpl.java` |
+| 3 | getUserRoles/Orgs N+1 查询优化 | ✅ 已实现 | `UserConfigServiceImpl.java` |
+| 4 | ConfigHistory 版本管理 | ✅ 已实现 | `ConfigHistory.java`, `ConfigHistoryMapper.java/xml`, `ConfigHistoryService.java`, `ConfigHistoryServiceImpl.java` |
+| 5 | 配置加密功能 | ✅ 已实现 | `ConfigEncryptionService.java`, `UserConfigServiceImpl.java` |
+
+---
+
+## 十、数据库迁移脚本
+
+**位置**: `user-org-service/src/main/resources/db/migration/V1.0.2__add_config_history_version.sql`
+
+```sql
+ALTER TABLE sys_user_config_history
+ADD COLUMN version INT DEFAULT 1 COMMENT '版本号';
+
+CREATE INDEX idx_config_version ON sys_user_config_history(config_id, version);
+```
